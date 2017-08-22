@@ -1,4 +1,3 @@
-module MatFun
 #=
 This file implements the algorithm described in:
 "A Schur-Parlett Algorithm for Computing Matrix Functions"
@@ -17,11 +16,12 @@ function blockpattern{C}(vals::Vector{C}, δ::Float64)
 	for i = 1:length(vals)
 		λ = vals[i]
 		if S[i] == -1
-		p += 1
-		# assign λ to set p:
-		for k = i:length(vals)
-			if vals[k] == λ
-				S[k] = p
+			p += 1
+			# assign λ to set p:
+			for k = i:length(vals)
+				if vals[k] == λ
+					S[k] = p
+				end
 			end
 		end
 		Sλ = S[i]
@@ -92,5 +92,3 @@ function reorder!{C<:Complex}(T::Matrix{C}, Q::Matrix{C}, S::Vector{Int64}, p::I
 	end
 	return blocksize
 end
-
-end # module
