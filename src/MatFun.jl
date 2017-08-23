@@ -2,7 +2,7 @@ __precompile__()
 
 module MatFun
 
-# using ForwardDiff
+using Base.LinAlg
 
 # export schurparlett
 
