@@ -16,9 +16,8 @@ using MatFun, Base.Test
 	@test S == real.(vals)
 	@test p == 3
 
-	vals = Vector{Complex128}([5, 0, 4, 1, 3, 2])
+	vals = Vector{Complex128}(randperm(20))
 	S, p = MatFun.blockpattern(vals, 1.0)
-	# the two sets should get merged
 	@test S == fill(1, length(vals))
 	@test p == 1
 end
