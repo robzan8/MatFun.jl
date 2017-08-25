@@ -4,7 +4,7 @@ module MatFun
 
 using Base.LinAlg
 
-# export schurparlett
+# export parlett, schurparlett
 
 include("schurparlett.jl")
 

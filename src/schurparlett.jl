@@ -46,8 +46,8 @@ function blockpattern{C}(vals::Vector{C}, δ::Float64)
 							S[k] -= 1
 						end
 					end
+					Sλ = Smin
 					p -= 1
-					Sλ = S[i] # must be updated!
 				end
 			end
 		end
