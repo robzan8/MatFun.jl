@@ -12,7 +12,7 @@ using MatFun, Base.Test
 	@test p == length(vals)
 
 	vals = [1, 1+0.1im, 2, 3, 1+0.2im, 2+0.1im, 2+0.2im, 3, 3, 3+0.1im, 3+0.2im, 1, 1+0.3im]
-	S, p = MatFun.blockpattern(vals, 0.1)
+	S, p = MatFun.blockpattern(vals, 0.10001)
 	@test S == real.(vals)
 	@test p == 3
 
@@ -47,7 +47,7 @@ end
 	for set = 1:p
 		b = a + blocksize[set] - 1
 		for i = a+1:b
-			@test S[a] == S[i] && abs(newvals[a]-newvals[i]) <= delta*blocksize[set]
+			@test S[a] == S[i] && abs(newvals[a]-newvals[i]) <= delta*blocksize[set]+sqrt(eps())
 		end
 		a = b + 1
 	end
@@ -57,4 +57,5 @@ end
 			@test abs(newvals[i]-newvals[j]) > delta
 		end
 	end
+	@test norm(Q*T*Q'-A)/norm(A) < sqrt(eps())
 end
