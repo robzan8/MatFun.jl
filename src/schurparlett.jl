@@ -11,8 +11,8 @@ The function returns S and p. S is the pattern, where S[i] = s means that
 vals[i] has been assigned to set s. p is the number of sets identified.
 =#
 function blockpattern{C}(vals::Vector{C}, δ::Float64)
-	S = fill(Int32(-1), length(vals)) # -1 means unassigned
-	p = Int32(0)
+	S = fill(-1, length(vals)) # -1 means unassigned
+	p = 0
 	for i = 1:length(vals)
 		λ = vals[i]
 		if S[i] == -1
@@ -52,7 +52,7 @@ function blockpattern{C}(vals::Vector{C}, δ::Float64)
 			end
 		end
 	end
-	return Vector{Int64}(S), Int64(p)
+	return S, p
 end
 
 #=
@@ -76,14 +76,12 @@ function reorder!{C<:Complex}(T::Matrix{C}, Q::Matrix{C}, S::Vector{Int64}, p::I
 
 	ilst = 1
 	for set = 1:p
-		_, minset = findmin(pos)
+		minset = findmin(pos)[2]
 		for ifst = ilst:length(S)
 			if S[ifst] == minset
 				if ifst != ilst
 					LAPACK.trexc!('V', ifst, ilst, T, Q)
-					for i = ifst-1:-1:ilst
-						S[i], S[i+1] = S[i+1], S[i]
-					end
+					S[ilst], S[ilst+1:ifst] = S[ifst], S[ilst:ifst-1]
 				end
 				ilst += 1
 				blocksize[set] += 1
