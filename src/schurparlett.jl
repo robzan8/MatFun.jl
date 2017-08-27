@@ -10,7 +10,7 @@ vals is the vector of eigenvalues, δ is the tolerance.
 The function returns S and p. S is the pattern, where S[i] = s means that
 vals[i] has been assigned to set s. p is the number of sets identified.
 =#
-function blockpattern{C}(vals::Vector{C}, δ::Float64)
+function blockpattern(vals::Vector{C}, δ::Float64) where {C}
 	S = fill(-1, length(vals)) # -1 means unassigned
 	p = 0
 	for i = 1:length(vals)
@@ -62,7 +62,7 @@ The entries of S are also reordered together with the corresponding eigenvalues.
 The function returns vector blocksize: blocksize[i] is the size of the i-th
 leading block on T's diagonal (after the reordering).
 =#
-function reorder!{C<:Complex}(T::Matrix{C}, Q::Matrix{C}, S::Vector{Int64}, p::Int64)
+function reorder!(T::Matrix{C}, Q::Matrix{C}, S::Vector{Int64}, p::Int64) where {C <: Complex}
 	blocksize = zeros(Int64, p)
 	# for each set, calculate its mean position in S:
 	pos = zeros(Float64, p)
