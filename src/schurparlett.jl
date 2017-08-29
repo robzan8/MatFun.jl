@@ -62,7 +62,7 @@ The entries of S are also reordered together with the corresponding eigenvalues.
 The function returns vector blocksize: blocksize[i] is the size of the i-th
 leading block on T's diagonal (after the reordering).
 =#
-function reorder!(T::Matrix{C}, Q::Matrix{C}, S::Vector{Int64}, p::Int64) where {C <: Complex}
+function reorder!(T::Matrix{C}, Q::Matrix{C}, S::Vector{Int64}, p::Int64) where {C<:Complex}
 	blocksize = zeros(Int64, p)
 	# for each set, calculate its mean position in S:
 	pos = zeros(Float64, p)
@@ -90,4 +90,19 @@ function reorder!(T::Matrix{C}, Q::Matrix{C}, S::Vector{Int64}, p::Int64) where 
 		pos[minset] = Inf
 	end
 	return blocksize
+end
+
+using ForwardDiff: Dual, Tag
+#=
+complexderiv returns the complex derivative of function f:C->C at x.
+ForwardDiff does not expose this functionality yet, so we play with Dual.
+=#
+function complexderiv(f::F, x::Complex{R}) where {F, R<:Real}
+	T = typeof(Tag(F, Complex{R}))
+	y = f(Dual{T}(real(x), one(R), zero(R)) + Dual{T}(imag(x), zero(R), one(R))*im)
+	a, b = real(y).partials, imag(y).partials
+	if a[1] ≈ b[2] && b[1] ≈ -a[2]
+		return a[1] + b[1]*im
+	end
+	error("f is not complex differentiable")
 end

@@ -57,5 +57,27 @@ end
 			@test abs(newvals[i]-newvals[j]) > delta
 		end
 	end
-	@test norm(Q*T*Q'-A)/norm(A) < sqrt(eps())
+	@test Q*T*Q' ≈ A
+end
+
+@testset "complexderiv" begin
+	srand(57)
+
+	sin1 = (x) -> MatFun.complexderiv(sin, x)
+	for i = 1:5
+		x = rand() + rand()*im
+		@test sin1(x) ≈ cos(x)
+	end
+
+	sin2 = (x) -> MatFun.complexderiv(sin1, x)
+	for i = 1:5
+		x = rand() + rand()*im
+		@test sin2(x) ≈ -sin(x)
+	end
+
+	conj1 = (x) -> MatFun.complexderiv(conj, x)
+	for i = 1:5
+		x = rand() + rand()*im
+		@test_throws ErrorException conj1(x) # not complex differentiable
+	end
 end
