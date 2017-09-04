@@ -2,7 +2,7 @@ __precompile__()
 
 module MatFun
 
-using Base.LinAlg
+using Base.LinAlg, TaylorSeries
 
 # export parlett, schurparlett
 

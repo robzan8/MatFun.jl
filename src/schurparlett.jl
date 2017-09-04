@@ -76,7 +76,7 @@ function reorder!(T::Matrix{C}, Q::Matrix{C}, S::Vector{Int64}, p::Int64) where 
 
 	ilst = 1
 	for set = 1:p
-		minset = findmin(pos)[2]
+		minset = indmin(pos)
 		for ifst = ilst:length(S)
 			if S[ifst] == minset
 				if ifst != ilst
@@ -92,17 +92,40 @@ function reorder!(T::Matrix{C}, Q::Matrix{C}, S::Vector{Int64}, p::Int64) where 
 	return blocksize
 end
 
-using ForwardDiff: Dual, Tag
-#=
-complexderiv returns the complex derivative of function f:C->C at x.
-ForwardDiff does not expose this functionality yet, so we play with Dual.
-=#
-function complexderiv(f::F, x::Complex{R}) where {F, R<:Real}
-	T = typeof(Tag(F, Complex{R}))
-	y = f(Dual{T}(real(x), one(R), zero(R)) + Dual{T}(imag(x), zero(R), one(R))*im)
-	a, b = real(y).partials, imag(y).partials
-	if a[1] ≈ b[2] && b[1] ≈ -a[2]
-		return a[1] + b[1]*im
+function atomicblock(f::Function, T::Matrix{Complex{R}}) where {R<:Real}
+	n = size(T, 1)
+	if n == 1
+		return f.(T)
 	end
-	error("f is not complex differentiable")
+
+	maxiter = 300
+	μ = norm(UpperTriangular(eye(n) - abs.(triu(T, 1))) \ fill(1.0, n), Inf)
+	σ = mean(diag(T))
+	tay = f(σ + Taylor1(typeof(σ), max(10, n*3÷2)))
+	M = UpperTriangular(T - diagm(fill(σ, n)))
+	P = M
+	F = UpperTriangular(diagm(fill(tay.coeffs[1], n)))
+	for k = 1:maxiter
+		needorder = k + n - 1
+		@assert needorder <= tay.order + 1
+		if needorder > tay.order
+			tay = f(σ + Taylor1(typeof(σ), min(maxiter+n-1, tay.order*2)))
+		end
+
+		Term = tay.coeffs[k+1] * P
+		F += Term
+		small = eps()*norm(F, Inf)
+		if norm(Term, Inf) <= small
+			# we estimate ωₖ₊ᵣ with |f⁽ᵏ⁺ʳ⁾(σ)| = |coeffs[k+p]|*Γ(k+p)/Γ(p) where p = r + 1
+			∆ = 0.0
+			for p = 1:n
+				∆ = max(∆, abs(tay.coeffs[k+p])*gamma(k+p)/gamma(p))
+			end
+			if μ*∆*norm(P, Inf) <= small
+				break
+			end
+		end
+		P *= M
+	end
+	return F
 end
