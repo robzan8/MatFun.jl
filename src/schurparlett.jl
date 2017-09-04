@@ -119,7 +119,7 @@ function atomicblock(f::Function, T::Matrix{Complex{R}}) where {R<:Real}
 		F += Term
 		small = eps()*norm(F, Inf)
 		if norm(Term, Inf) <= small
-			# we estimate ω[k+r] with |f⁽ᵏ⁺ʳ⁾(σ)| = |coeffs[k+p]|*Γ(k+p)/Γ(p) where p = r + 1
+			# we estimate ω[k+r] with |f⁽ᵏ⁺ʳ⁾(σ)| = |coeffs[k+p]|*Γ(k+p) where p = r + 1
 			∆ = 0.0
 			for p = 1:n
 				∆ = max(∆, abs(tay.coeffs[k+p])*gamma(k+p)/gamma(p))
