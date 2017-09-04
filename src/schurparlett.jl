@@ -92,6 +92,9 @@ function reorder!(T::Matrix{C}, Q::Matrix{C}, S::Vector{Int64}, p::Int64) where 
 	return blocksize
 end
 
+#=
+atomicblock computes f(T) using Taylor as described in Algorithm 2.6
+=#
 function atomicblock(f::Function, T::Matrix{Complex{R}}) where {R<:Real}
 	n = size(T, 1)
 	if n == 1
@@ -116,7 +119,7 @@ function atomicblock(f::Function, T::Matrix{Complex{R}}) where {R<:Real}
 		F += Term
 		small = eps()*norm(F, Inf)
 		if norm(Term, Inf) <= small
-			# we estimate ωₖ₊ᵣ with |f⁽ᵏ⁺ʳ⁾(σ)| = |coeffs[k+p]|*Γ(k+p)/Γ(p) where p = r + 1
+			# we estimate ω[k+r] with |f⁽ᵏ⁺ʳ⁾(σ)| = |coeffs[k+p]|*Γ(k+p)/Γ(p) where p = r + 1
 			∆ = 0.0
 			for p = 1:n
 				∆ = max(∆, abs(tay.coeffs[k+p])*gamma(k+p)/gamma(p))
