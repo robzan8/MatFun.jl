@@ -93,15 +93,15 @@ function reorder!(T::Matrix{C}, Q::Matrix{C}, S::Vector{Int64}, p::Int64) where 
 end
 
 #=
-atomicblock computes f(T) using Taylor as described in Algorithm 2.6
+atomicblock computes f(T) using Taylor as described in Algorithm 2.6.
 =#
-function atomicblock(f::Function, T::Matrix{Complex{R}}) where {R<:Real}
+function atomicblock(f::Func, T::Matrix{C}) where {Func, C}
 	n = size(T, 1)
 	if n == 1
 		return f.(T)
 	end
 
-	maxiter = 300
+	maxiter = 400
 	μ = norm(UpperTriangular(eye(n) - abs.(triu(T, 1))) \ fill(1.0, n), Inf)
 	σ = mean(diag(T))
 	tay = f(σ + Taylor1(typeof(σ), max(10, n*3÷2)))
@@ -117,18 +117,21 @@ function atomicblock(f::Function, T::Matrix{Complex{R}}) where {R<:Real}
 
 		Term = tay.coeffs[k+1] * P
 		F += Term
+		P *= M
 		small = eps()*norm(F, Inf)
 		if norm(Term, Inf) <= small
-			# we estimate ω[k+r] with |f⁽ᵏ⁺ʳ⁾(σ)| = |coeffs[k+p]|*Γ(k+p) where p = r + 1
-			∆ = 0.0
-			for p = 1:n
-				∆ = max(∆, abs(tay.coeffs[k+p])*gamma(k+p)/gamma(p))
-			end
+			#=
+			The termination condition is an approximation of the one in the paper:
+			1) In the paper, each ω[k+r] is divided by r! and then another division
+			   by (k+1)! is carried inside P. We, instead, have a division by (k+r)!
+			   implicit in the Taylor coefficients;
+			2) We estimate ω[k+r] with |f⁽ᵏ⁺ʳ⁾(σ)| from tay.coeffs[k+r+1].
+			=#
+			∆ = maximum(abs.(tay.coeffs[k+1:k+n]))
 			if μ*∆*norm(P, Inf) <= small
 				break
 			end
 		end
-		P *= M
 	end
-	return F
+	return Matrix{C}(F)
 end
