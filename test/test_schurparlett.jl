@@ -61,10 +61,20 @@ end
 end
 
 @testset "atomicblock" begin
+	n = 1000
 	srand(75)
-	A = Matrix{Complex128}(randn(20, 20))
-	@test cond(A) <= 1000
-	T, Q, vals = schur(A)
+	vals = zeros(n)
+	vals[1] = n
+	for i = 2:n
+		vals[i] = vals[i-1] + rand()
+	end
+	vals *= 0.1
+	T = Matrix{Complex128}(diagm(vals) + triu(randn(n, n), 1))
+	@test cond(T) <= 1000
 
-	MatFun.atomicblock(exp, T)
+	@test MatFun.atomicblock(exp, T) ≈ LinAlg.expm(T)
+	@test MatFun.atomicblock(log, T) ≈ LinAlg.logm(T)
+	@test MatFun.atomicblock(sqrt, T) ≈ LinAlg.sqrtm(T)
+	pow = (x) -> x^5.739
+	@test MatFun.atomicblock(pow, T) ≈ pow(T)
 end

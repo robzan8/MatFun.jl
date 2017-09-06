@@ -104,7 +104,7 @@ function atomicblock(f::Func, T::Matrix{C}) where {Func, C}
 	maxiter = 400
 	μ = norm(UpperTriangular(eye(n) - abs.(triu(T, 1))) \ fill(1.0, n), Inf)
 	σ = mean(diag(T))
-	tay = f(σ + Taylor1(typeof(σ), max(10, n*3÷2)))
+	tay = f(σ + Taylor1(typeof(σ), max(10, n*2)))
 	M = UpperTriangular(T - diagm(fill(σ, n)))
 	P = M
 	F = UpperTriangular(diagm(fill(tay.coeffs[1], n)))
@@ -121,14 +121,19 @@ function atomicblock(f::Func, T::Matrix{C}) where {Func, C}
 		small = eps()*norm(F, Inf)
 		if norm(Term, Inf) <= small
 			#=
-			The termination condition is an approximation of the one in the paper:
-			1) In the paper, each ω[k+r] is divided by r! and then another division
-			   by (k+1)! is carried inside P. We, instead, have a division by (k+r)!
-			   implicit in the Taylor coefficients;
-			2) We estimate ω[k+r] with |f⁽ᵏ⁺ʳ⁾(σ)| from tay.coeffs[k+r+1].
+			We estimate ω[k+r] with |f⁽ᵏ⁺ʳ⁾(σ)| from tay.coeffs[k+r+1].
+			In the paper, each ω[k+r] is divided by r! and then another division by
+			(k+1)! is carried inside P. We, instead, have a division by (k+r)! implicit
+			in the Taylor coefficients. So, we have to divide the coefficients by
+			(k+1)! * r! / (k+r)! = beta(k, r+1) * (k+1) * k
 			=#
-			∆ = maximum(abs.(tay.coeffs[k+1:k+n]))
+			∆ = 0.0
+			for q = 1:n # q = r+1
+				∆ = max(∆, abs.(tay.coeffs[k+q])#=/beta(k, q)=#)
+			end
+			#∆ /= (k+1) * k
 			if μ*∆*norm(P, Inf) <= small
+				println(k)
 				break
 			end
 		end
