@@ -101,39 +101,34 @@ function atomicblock(f::Func, T::Matrix{C}) where {Func, C}
 		return f.(T)
 	end
 
-	maxiter = 400
-	μ = norm(UpperTriangular(eye(n) - abs.(triu(T, 1))) \ fill(1.0, n), Inf)
+	maxiter = 300
+	lookahead = 10
 	σ = mean(diag(T))
-	tay = f(σ + Taylor1(typeof(σ), max(10, n*2)))
+	tay = f(σ + Taylor1(typeof(σ), 20+lookahead))
 	M = UpperTriangular(T - diagm(fill(σ, n)))
 	P = M
 	F = UpperTriangular(diagm(fill(tay.coeffs[1], n)))
 	for k = 1:maxiter
-		needorder = k + n - 1
+		needorder = k + lookahead
 		@assert needorder <= tay.order + 1
 		if needorder > tay.order
-			tay = f(σ + Taylor1(typeof(σ), min(maxiter+n-1, tay.order*2)))
+			tay = f(σ + Taylor1(typeof(σ), min(maxiter+lookahead, tay.order*2)))
 		end
 
 		Term = tay.coeffs[k+1] * P
 		F += Term
+		normP = norm(P, Inf)
 		P *= M
 		small = eps()*norm(F, Inf)
 		if norm(Term, Inf) <= small
 			#=
-			We estimate ω[k+r] with |f⁽ᵏ⁺ʳ⁾(σ)| from tay.coeffs[k+r+1].
-			In the paper, each ω[k+r] is divided by r! and then another division by
-			(k+1)! is carried inside P. We, instead, have a division by (k+r)! implicit
-			in the Taylor coefficients. So, we have to divide the coefficients by
-			(k+1)! * r! / (k+r)! = beta(k, r+1) * (k+1) * k
+			The termination condition is loosely inspired to the one in the paper.
+			We check that the next lookahead terms in the series are small,
+			estimating ||M^(k+r)|| with max(||M^k||, ||M^(k+1)||).
+			Works well in practice, at least for exp, log, sqrt and pow.
 			=#
-			∆ = 0.0
-			for q = 1:n # q = r+1
-				∆ = max(∆, abs.(tay.coeffs[k+q])#=/beta(k, q)=#)
-			end
-			#∆ /= (k+1) * k
-			if μ*∆*norm(P, Inf) <= small
-				println(k)
+			∆ = maximum(abs.(tay.coeffs[k+2:k+1+lookahead]))
+			if ∆*max(normP, norm(P, Inf)) <= small
 				break
 			end
 		end

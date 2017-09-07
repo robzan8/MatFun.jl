@@ -61,20 +61,38 @@ end
 end
 
 @testset "atomicblock" begin
-	n = 1000
-	srand(75)
-	vals = zeros(n)
-	vals[1] = n
-	for i = 2:n
-		vals[i] = vals[i-1] + rand()
-	end
-	vals *= 0.1
-	T = Matrix{Complex128}(diagm(vals) + triu(randn(n, n), 1))
-	@test cond(T) <= 1000
+	for t = 1:2
+		n = 10
+		tol = 30
+		srand(75*t)
+		vals = zeros(Complex128, n)
+		vals[1] = n
+		for i = 2:n
+			vals[i] = (t == 1) ? vals[1]+exp(im*2*pi*i/n) : vals[i-1]+rand()
+		end
+		vals *= 0.1
+		T = diagm(vals) + triu(randn(n, n), 1)
+		@test cond(T) <= 1000
 
-	@test MatFun.atomicblock(exp, T) ≈ LinAlg.expm(T)
-	@test MatFun.atomicblock(log, T) ≈ LinAlg.logm(T)
-	@test MatFun.atomicblock(sqrt, T) ≈ LinAlg.sqrtm(T)
-	pow = (x) -> x^5.739
-	@test MatFun.atomicblock(pow, T) ≈ pow(T)
+		F1 = LinAlg.expm(T)
+		F2 = MatFun.atomicblock(exp, T)
+		relerr = norm(F2-F1)/norm(F1)
+		@test relerr <= tol*eps()
+
+		F1 = LinAlg.logm(T)
+		F2 = MatFun.atomicblock(log, T)
+		relerr = norm(F2-F1)/norm(F1)
+		@test relerr <= tol*eps()
+
+		F1 = LinAlg.sqrtm(T)
+		F2 = MatFun.atomicblock(sqrt, T)
+		relerr = norm(F2-F1)/norm(F1)
+		@test relerr <= tol*eps()
+
+		pow = (x) -> x^Float64(pi)
+		F1 = pow(T)
+		F2 = MatFun.atomicblock(pow, T)
+		relerr = norm(F2-F1)/norm(F1)
+		@test relerr <= tol*eps()
+	end
 end
