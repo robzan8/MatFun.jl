@@ -105,9 +105,9 @@ function atomicblock(f::Func, T::Matrix{C}) where {Func, C}
 	lookahead = 10
 	σ = mean(diag(T))
 	tay = f(σ + Taylor1(typeof(σ), 20+lookahead))
-	M = UpperTriangular(T - diagm(fill(σ, n)))
+	M = UpperTriangular(T - σ*eye(T))
 	P = M
-	F = UpperTriangular(diagm(fill(tay.coeffs[1], n)))
+	F = UpperTriangular(tay.coeffs[1]*eye(T))
 	for k = 1:maxiter
 		needorder = k + lookahead
 		@assert needorder <= tay.order + 1
@@ -134,4 +134,42 @@ function atomicblock(f::Func, T::Matrix{C}) where {Func, C}
 		end
 	end
 	return Matrix{C}(F)
+end
+
+function schurparlett(f::Func, A::Matrix{C}) where {Func, C<:Complex}
+	if istriu(A)
+		return schurparlett(f, A, eye(A))
+	end
+
+	T, Q, vals = schur(A)
+	return schurparlett(f, T, Q)
+end
+
+function schurparlett(f::Func, T::Matrix{Comp}, Q::Matrix{Comp}) where {Func, Comp<:Complex}
+	if isdiag(T)
+		return Q*f.(T)*Q'
+	end
+
+	vals = diag(T)
+	S, p = blockpattern(vals, 0.1)
+	T, Q = copy(T), copy(Q)
+	bsize = reorder!(T, Q, S, p)
+	bend = cumsum(bsize)
+	bbegin = bend - bsize .+ 1
+	F = zeros(T)
+	for j = 1:p
+		J = bbegin[j]:bend[j]
+		F[J,J] = atomicblock(f, T[J,J])
+		for i = j-1:-1:1
+			I = bbegin[i]:bend[i]
+			C = F[I,I]*T[I,J] - T[I,J]*F[J,J]
+			for k = i+1:j-1
+				K = bbegin[k]:bend[k]
+				C += F[I,K]*T[K,J] - T[I,K]*F[K,J]
+			end
+			C, scale = LAPACK.trsyl!('N', 'N', T[I,I], T[J,J], C, -1)
+			F[I,J] = C/scale
+		end
+	end
+	return Q*F*Q'
 end

@@ -96,3 +96,36 @@ end
 		@test relerr <= tol*eps()
 	end
 end
+
+@testset "schurparlett" begin
+	n = 50
+	tol = 200
+	srand(666)
+	A = Matrix{Complex128}(randn(n, n))
+	AA = A'*A
+	vals = schur(AA)[3]
+	println(sort(Vector{Float64}(vals)))
+	println(MatFun.blockpattern(vals, 0.1))
+	@test cond(A) <= 1000
+
+	F1 = LinAlg.expm(A)
+	F2 = schurparlett(exp, A)
+	relerr = norm(F2-F1)/norm(F1)
+	@test relerr <= tol*eps()
+
+	F1 = LinAlg.logm(AA)
+	F2 = schurparlett(log, AA)
+	relerr = norm(F2-F1)/norm(F1)
+	@test relerr <= tol*eps()
+
+	F1 = LinAlg.sqrtm(AA)
+	F2 = schurparlett(sqrt, AA)
+	relerr = norm(F2-F1)/norm(F1)
+	@test relerr <= tol*eps()
+
+	pow = (x) -> x^Float64(pi)
+	F1 = pow(A)
+	F2 = schurparlett(pow, A)
+	relerr = norm(F2-F1)/norm(F1)
+	@test relerr <= tol*eps()
+end

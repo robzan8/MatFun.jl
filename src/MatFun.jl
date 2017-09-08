@@ -4,7 +4,7 @@ module MatFun
 
 using Base.LinAlg, TaylorSeries
 
-# export parlett, schurparlett
+export schurparlett
 
 include("schurparlett.jl")
 
