@@ -147,7 +147,7 @@ end
 
 function schurparlett(f::Func, T::Matrix{Comp}, Q::Matrix{Comp}) where {Func, Comp<:Complex}
 	if isdiag(T)
-		return Q*f.(T)*Q'
+		return Q*diagm(f.(diag(T)))*Q'
 	end
 
 	vals = diag(T)

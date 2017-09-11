@@ -63,10 +63,10 @@ end
 @testset "atomicblock" begin
 	for t = 1:2
 		n = 10
-		tol = 30
+		tol = 100*eps()
 		srand(75*t)
 		vals = zeros(Complex128, n)
-		vals[1] = n
+		vals[1] = 50
 		for i = 2:n
 			vals[i] = (t == 1) ? vals[1]+exp(im*2*pi*i/n) : vals[i-1]+rand()
 		end
@@ -77,55 +77,64 @@ end
 		F1 = LinAlg.expm(T)
 		F2 = MatFun.atomicblock(exp, T)
 		relerr = norm(F2-F1)/norm(F1)
-		@test relerr <= tol*eps()
+		@test relerr <= tol
 
 		F1 = LinAlg.logm(T)
 		F2 = MatFun.atomicblock(log, T)
 		relerr = norm(F2-F1)/norm(F1)
-		@test relerr <= tol*eps()
+		@test relerr <= tol
 
 		F1 = LinAlg.sqrtm(T)
 		F2 = MatFun.atomicblock(sqrt, T)
 		relerr = norm(F2-F1)/norm(F1)
-		@test relerr <= tol*eps()
+		@test relerr <= tol
 
 		pow = (x) -> x^Float64(pi)
 		F1 = pow(T)
 		F2 = MatFun.atomicblock(pow, T)
 		relerr = norm(F2-F1)/norm(F1)
-		@test relerr <= tol*eps()
+		@test relerr <= tol
 	end
 end
 
 @testset "schurparlett" begin
-	n = 50
-	tol = 200
-	srand(666)
-	A = Matrix{Complex128}(randn(n, n))
-	AA = A'*A
-	vals = schur(AA)[3]
-	println(sort(Vector{Float64}(vals)))
-	println(MatFun.blockpattern(vals, 0.1))
-	@test cond(A) <= 1000
+	for t = 1:3
+		n = 10
+		tol = 100*eps()
+		srand(666*t)
+		A = Matrix{Complex128}(0, 0)
+		if t == 1
+			A = 5*eye(n) + randn(n, n) + im*randn(n, n)
+		elseif t == 2
+			A = Matrix{Complex128}(diagm(randn(n) .+ 5))
+		else
+			vals = [4.0, 4, 4, 5, 5, 5, 7, 7, 7, 7]
+			for i = 1:length(vals)
+				vals[i] += rand()*0.1
+			end
+			A = Matrix{Complex128}(diagm(vals) + triu(randn(n, n), 1))
+		end
+		@test cond(A) <= 1000
 
-	F1 = LinAlg.expm(A)
-	F2 = schurparlett(exp, A)
-	relerr = norm(F2-F1)/norm(F1)
-	@test relerr <= tol*eps()
+		F1 = LinAlg.expm(A)
+		F2 = schurparlett(exp, A)
+		relerr = norm(F2-F1)/norm(F1)
+		@test relerr <= tol
 
-	F1 = LinAlg.logm(AA)
-	F2 = schurparlett(log, AA)
-	relerr = norm(F2-F1)/norm(F1)
-	@test relerr <= tol*eps()
+		F1 = LinAlg.logm(A)
+		F2 = schurparlett(log, A)
+		relerr = norm(F2-F1)/norm(F1)
+		@test relerr <= tol
 
-	F1 = LinAlg.sqrtm(AA)
-	F2 = schurparlett(sqrt, AA)
-	relerr = norm(F2-F1)/norm(F1)
-	@test relerr <= tol*eps()
+		F1 = LinAlg.sqrtm(A)
+		F2 = schurparlett(sqrt, A)
+		relerr = norm(F2-F1)/norm(F1)
+		@test relerr <= tol
 
-	pow = (x) -> x^Float64(pi)
-	F1 = pow(A)
-	F2 = schurparlett(pow, A)
-	relerr = norm(F2-F1)/norm(F1)
-	@test relerr <= tol*eps()
+		pow = (x) -> x^Float64(pi)
+		F1 = pow(A)
+		F2 = schurparlett(pow, A)
+		relerr = norm(F2-F1)/norm(F1)
+		@test relerr <= tol
+	end
 end
