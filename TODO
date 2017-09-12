@@ -2,3 +2,5 @@ profiling
 schurparlett on almost triangular/diagonal matrices (rounding errors)
 introductory comment to schurparlett functions
 special path for 1x1 sylvester?
+keeping transposed versions of T and F in schurparlett may allow for better
+	memory access patterns.
