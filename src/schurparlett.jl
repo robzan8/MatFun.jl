@@ -136,6 +136,30 @@ function atomicblock(f::Func, T::Matrix{C}) where {Func, C}
 	return Matrix{C}(F)
 end
 
+function parlettrec(f::Func, T::Matrix{Num}, blockend::Vector{Int64}) where {Func, Num<:Number}
+	@assert length(blockend) > 0
+	if length(blockend) == 1
+		return atomicblock(f, T)
+	end
+
+	# Split T in 2x2 superblocks as balanced as possible,
+	# preserving the internal blocks determined by the eigenvalues:
+	n = size(T, 1)
+	b = indmin(abs.(blockend .- n/2))
+	bend = blockend[b]
+	T11, T12 = T[1:bend,     1:bend], T[1:bend,     bend+1:end]
+	T21, T22 = T[bend+1:end, 1:bend], T[bend+1:end, bend+1:end]
+
+	F11 = parlettrec(f, T11, blockend[1:b])
+	F22 = parlettrec(f, T22, blockend[b+1:end] .- bend)
+
+	# Need F12, Parlett says: T11*F12 - F12*T22 = F11*T12 - T12*F22
+	C = F11*T12 - T12*F22
+	F12, scale = LAPACK.trsyl!('N', 'N', T11, T22, C, -1)
+
+	return [F11 F12/scale; T21#=0=# F22]
+end
+
 function schurparlett(f::Func, A::Matrix{C}) where {Func, C<:Complex}
 	if istriu(A)
 		return schurparlett(f, A, eye(A))
@@ -153,23 +177,7 @@ function schurparlett(f::Func, T::Matrix{Comp}, Q::Matrix{Comp}) where {Func, Co
 	vals = diag(T)
 	S, p = blockpattern(vals, 0.1)
 	T, Q = copy(T), copy(Q)
-	bsize = reorder!(T, Q, S, p)
-	bend = cumsum(bsize)
-	bbegin = bend - bsize .+ 1
-	F = zeros(T)
-	for j = 1:p
-		J = bbegin[j]:bend[j]
-		F[J,J] = atomicblock(f, T[J,J])
-		for i = j-1:-1:1
-			I = bbegin[i]:bend[i]
-			C = F[I,I]*T[I,J] - T[I,J]*F[J,J]
-			for k = i+1:j-1
-				K = bbegin[k]:bend[k]
-				C += F[I,K]*T[K,J] - T[I,K]*F[K,J]
-			end
-			C, scale = LAPACK.trsyl!('N', 'N', T[I,I], T[J,J], C, -1)
-			F[I,J] = C/scale
-		end
-	end
+	blocksize = reorder!(T, Q, S, p)
+	F = parlettrec(f, T, cumsum(blocksize))
 	return Q*F*Q'
 end
