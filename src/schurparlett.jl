@@ -163,7 +163,7 @@ function schurparlett(f::Func, T::Matrix{Comp}, Q::Matrix{Comp}) where {Func, Co
 		for i = j-1:-1:1
 			I = bbegin[i]:bend[i]
 			K1, K2 = bbegin[i]:bend[j-1], bbegin[i+1]:bend[j]
-			C = F[I,K1]*T[K1,J] - T[I,K2]*F[K2,J]
+			C = view(F,I,K1)*view(T,K1,J) - view(T,I,K2)*view(F,K2,J)
 			Fij, scale = LAPACK.trsyl!('N', 'N', T[I,I], T[J,J], C, -1)
 			F[I,J] = Fij/scale
 		end
