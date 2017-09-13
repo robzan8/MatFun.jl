@@ -142,8 +142,7 @@ function parlettrec(f::Func, T::Matrix{Num}, blockend::Vector{Int64}) where {Fun
 		return atomicblock(f, T)
 	end
 
-	# Split T in 2x2 superblocks as balanced as possible,
-	# preserving the internal blocks determined by the eigenvalues:
+	# Split T in 2x2 superblocks of size ~n/2:
 	n = size(T, 1)
 	b = indmin(abs.(blockend .- n/2))
 	bend = blockend[b]
@@ -152,10 +151,9 @@ function parlettrec(f::Func, T::Matrix{Num}, blockend::Vector{Int64}) where {Fun
 
 	F11 = parlettrec(f, T11, blockend[1:b])
 	F22 = parlettrec(f, T22, blockend[b+1:end] .- bend)
-
-	# Need F12, Parlett says: T11*F12 - F12*T22 = F11*T12 - T12*F22
-	C = F11*T12 - T12*F22
-	F12, scale = LAPACK.trsyl!('N', 'N', T11, T22, C, -1)
+	
+	# Parlett says: T11*F12 - F12*T22 = F11*T12 - T12*F22
+	F12, scale = LAPACK.trsyl!('N', 'N', T11, T22, F11*T12 - T12*F22, -1)
 
 	return [F11 F12/scale; T21#=0=# F22]
 end
