@@ -155,18 +155,17 @@ function schurparlett(f::Func, T::Matrix{Comp}, Q::Matrix{Comp}) where {Func, Co
 	T, Q = copy(T), copy(Q)
 	bsize = reorder!(T, Q, S, p)
 	bend = cumsum(bsize)
-	bbegin = bend - bsize .+ 1
-	F = zeros(T)
-	for j = 1:p
-		J = bbegin[j]:bend[j]
-		F[J,J] = atomicblock(f, T[J,J])
-		for i = j-1:-1:1
-			I = bbegin[i]:bend[i]
-			K1, K2 = bbegin[i]:bend[j-1], bbegin[i+1]:bend[j]
-			C = view(F,I,K1)*view(T,K1,J) - view(T,I,K2)*view(F,K2,J)
-			Fij, scale = LAPACK.trsyl!('N', 'N', T[I,I], T[J,J], C, -1)
-			F[I,J] = Fij/scale
-		end
+	B1 = 1:bend[1]
+	F11 = atomicblock(f, T[B1,B1])
+	for j = 2:p
+		B1, B2 = 1:bend[j-1], bend[j-1]+1:bend[j]
+		F22 = atomicblock(f, T[B2,B2])
+
+		# Parlett says: T11*F12 - F12*T22 = F11*T12 - T12*F22
+		C = F11*view(T,B1,B2) - view(T,B1,B2)*F22
+		F12, scale = LAPACK.trsyl!('N', 'N', T[B1,B1], T[B2,B2], C, -1)
+
+		F11 = [F11 F12/scale; zeros(view(T,B2,B1)) F22]
 	end
-	return Q*F*Q'
+	return Q*F11*Q'
 end
