@@ -162,13 +162,10 @@ function schurparlett(f::Func, T::Matrix{Comp}, Q::Matrix{Comp}) where {Func, Co
 		F[J,J] = atomicblock(f, T[J,J])
 		for i = j-1:-1:1
 			I = bbegin[i]:bend[i]
-			C = F[I,I]*T[I,J] - T[I,J]*F[J,J]
-			for k = i+1:j-1
-				K = bbegin[k]:bend[k]
-				C += F[I,K]*T[K,J] - T[I,K]*F[K,J]
-			end
-			C, scale = LAPACK.trsyl!('N', 'N', T[I,I], T[J,J], C, -1)
-			F[I,J] = C/scale
+			K1, K2 = bbegin[i]:bend[j-1], bbegin[i+1]:bend[j]
+			C = view(F,I,K1)*view(T,K1,J) - view(T,I,K2)*view(F,K2,J)
+			Fij, scale = LAPACK.trsyl!('N', 'N', T[I,I], T[J,J], C, -1)
+			F[I,J] = Fij/scale
 		end
 	end
 	return Q*F*Q'
