@@ -136,6 +136,36 @@ function atomicblock(f::Func, T::Matrix{C}) where {Func, C}
 	return Matrix{C}(F)
 end
 
+#=
+parlettrec computes and returns f(T) using the Parlett recurrence.
+T is block-triangular and blockend contains the indices at which each block ends.
+The paper suggests to do the recurrence iteratively (Algorithm 5.1), we do it
+recursively. This gives us better performance, as the recursion is cache oblivious.
+Also, the iterative version suffered overheads in the non-uncommon case of many
+small blocks.
+=#
+function parlettrec(f::Func, T::Matrix{Num}, blockend::Vector{Int64}) where {Func, Num<:Number}
+	@assert length(blockend) > 0
+	if length(blockend) == 1
+		return atomicblock(f, T)
+	end
+
+	# split T in 2x2 superblocks of size ~n/2:
+	n = size(T, 1)
+	b = indmin(abs.(blockend .- n/2))
+	bend = blockend[b]
+	T11, T12 = T[1:bend, 1:bend], view(T, 1:bend, bend+1:n)
+	T21, T22 = view(T, bend+1:n, 1:bend), T[bend+1:n, bend+1:n]
+
+	F11 = parlettrec(f, T11, blockend[1:b])
+	F22 = parlettrec(f, T22, blockend[b+1:end] .- bend)
+	
+	# Parlett says: T11*F12 - F12*T22 = F11*T12 - T12*F22
+	F12, scale = LAPACK.trsyl!('N', 'N', T11, T22, F11*T12 - T12*F22, -1)
+
+	return [F11 F12/scale; zeros(T21) F22]
+end
+
 function schurparlett(f::Func, A::Matrix{C}) where {Func, C<:Complex}
 	if istriu(A)
 		return schurparlett(f, A, eye(A))
@@ -153,20 +183,7 @@ function schurparlett(f::Func, T::Matrix{Comp}, Q::Matrix{Comp}) where {Func, Co
 	vals = diag(T)
 	S, p = blockpattern(vals, 0.1)
 	T, Q = copy(T), copy(Q)
-	bsize = reorder!(T, Q, S, p)
-	bend = cumsum(bsize)
-	bbegin = bend - bsize .+ 1
-	F = zeros(T)
-	for j = 1:p
-		J = bbegin[j]:bend[j]
-		F[J,J] = atomicblock(f, T[J,J])
-		for i = j-1:-1:1
-			I = bbegin[i]:bend[i]
-			K1, K2 = bbegin[i]:bend[j-1], bbegin[i+1]:bend[j]
-			C = view(F,I,K1)*view(T,K1,J) - view(T,I,K2)*view(F,K2,J)
-			Fij, scale = LAPACK.trsyl!('N', 'N', T[I,I], T[J,J], C, -1)
-			F[I,J] = Fij/scale
-		end
-	end
+	blocksize = reorder!(T, Q, S, p)
+	F = parlettrec(f, T, cumsum(blocksize))
 	return Q*F*Q'
 end
