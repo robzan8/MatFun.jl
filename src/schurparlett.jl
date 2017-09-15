@@ -6,50 +6,59 @@ This file implements the algorithm described in:
 
 #=
 blockpattern groups eigenvalues in sets, implementing Algorithm 4.1 of the paper.
-vals is the vector of eigenvalues, δ is the tolerance.
+vals is the vector of eigenvalues, delta is the tolerance.
 The function returns S and p. S is the pattern, where S[i] = s means that
 vals[i] has been assigned to set s. p is the number of sets identified.
 =#
-function blockpattern(vals::Vector{C}, δ::Float64) where {C}
-	S = fill(-1, length(vals)) # -1 means unassigned
+function blockpattern(vals::Vector{Num}, delta::Float64) where {Num<:Number}
+	unassigned = -1
+	S = fill(unassigned, length(vals))
 	p = 0
+
+	# assign vals[i] to set s.
+	function assign(i::Int64, s::Int64)
+		for k = i:length(vals)
+			if vals[k] == vals[i]
+				S[k] = s
+			end
+		end
+	end
+	# merge sets s and t.
+	function mergesets(s::Int64, t::Int64)
+		@assert s != t
+		smin, smax = minmax(s, t)
+		for k = 1:length(vals)
+			if S[k] == smax
+				S[k] = smin
+			elseif S[k] > smax
+				S[k] -= 1
+			end
+		end
+		p -= 1
+	end
+
 	for i = 1:length(vals)
-		λ = vals[i]
-		if S[i] == -1
+		if S[i] == unassigned
 			p += 1
-			# assign λ to set p:
-			for k = i:length(vals)
-				if vals[k] == λ
-					S[k] = p
+			assign(i, p)
+		end
+		for j = i+1:length(vals)
+			if S[j] != S[i] && abs(vals[i]-vals[j]) <= delta
+				if S[j] == unassigned
+					assign(j, S[i])
+				else
+					mergesets(S[i], S[j])
 				end
 			end
 		end
-		Sλ = S[i]
-		for j = i+1:length(vals)
-			μ = vals[j]
-			Sμ = S[j]
-			if Sμ != Sλ && abs(λ-μ) <= δ
-				if Sμ == -1
-					# assign μ to set Sλ:
-					for k = j:length(vals)
-						if vals[k] == μ
-							S[k] = Sλ
-						end
-					end
-				else
-					# merge sets Sλ and Sμ:
-					Smin, Smax = minmax(Sλ, Sμ)
-					for k = 1:length(vals)
-						if S[k] == Smax
-							S[k] = Smin
-						elseif S[k] > Smax
-							S[k] -= 1
-						end
-					end
-					Sλ = Smin
-					p -= 1
-				end
-			end
+	end
+
+	# complex conjugate eigenvalues can't be separated,
+	# so we merge those sets:
+	for i = 1:length(vals)-1
+		j = i + 1
+		if imag(vals[i]) != 0 && vals[i] == conj(vals[j]) && S[i] != S[j]
+			mergesets(S[i], S[j])
 		end
 	end
 	return S, p
@@ -58,11 +67,12 @@ end
 #=
 reorder reorders the complex Schur decomposition (T, Q) according to pattern S,
 using the swapping strategy described in Algorithm 4.2.
-The entries of S are also reordered together with the corresponding eigenvalues.
+The entries of S and vals are also reordered together with the corresponding eigenvalues.
 The function returns vector blocksize: blocksize[i] is the size of the i-th
 leading block on T's diagonal (after the reordering).
 =#
-function reorder!(T::Matrix{C}, Q::Matrix{C}, S::Vector{Int64}, p::Int64) where {C<:Complex}
+function reorder!(T::Matrix{Num1}, Q::Matrix{Num1}, vals::Vector{Num2}, S::Vector{Int64}, p::Int64)
+	where {Num1<:Number, Num2<:Number}
 	blocksize = zeros(Int64, p)
 	# for each set, calculate its mean position in S:
 	pos = zeros(Float64, p)
