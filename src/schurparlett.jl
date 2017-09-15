@@ -55,10 +55,13 @@ function blockpattern(vals::Vector{Num}, delta::Float64) where {Num<:Number}
 
 	# complex conjugate eigenvalues can't be separated,
 	# so we merge those sets:
-	for i = 1:length(vals)-1
-		j = i + 1
-		if imag(vals[i]) != 0 && vals[i] == conj(vals[j]) && S[i] != S[j]
-			mergesets(S[i], S[j])
+	for i = 1:length(vals)
+		if imag(vals[i]) != 0
+			for j = i+1:length(vals)
+				if vals[i] == conj(vals[j]) && S[i] != S[j]
+					mergesets(S[i], S[j])
+				end
+			end
 		end
 	end
 	return S, p
@@ -71,8 +74,9 @@ The entries of S and vals are also reordered together with the corresponding eig
 The function returns vector blocksize: blocksize[i] is the size of the i-th
 leading block on T's diagonal (after the reordering).
 =#
-function reorder!(T::Matrix{Num1}, Q::Matrix{Num1}, vals::Vector{Num2}, S::Vector{Int64}, p::Int64)
-	where {Num1<:Number, Num2<:Number}
+function reorder!(T::Mat, Q::Mat, vals::Vector{Num}, S::Vector{Int64}, p::Int64)
+	where {Mat<:Matrix{Number}, Num<:Number}
+
 	blocksize = zeros(Int64, p)
 	# for each set, calculate its mean position in S:
 	pos = zeros(Float64, p)
