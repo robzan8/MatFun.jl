@@ -68,16 +68,15 @@ function blockpattern(vals::Vector{Num}, delta::Float64) where {Num<:Number}
 end
 
 #=
-reorder reorders the complex Schur decomposition (T, Q) according to pattern S,
+reorder reorders the complex Schur decomposition (T, Q, vals) according to pattern S,
 using the swapping strategy described in Algorithm 4.2.
-The entries of S and vals are also reordered together with the corresponding eigenvalues.
+The entries of S are also reordered together with the corresponding eigenvalues.
 The function returns vector blocksize: blocksize[i] is the size of the i-th
 leading block on T's diagonal (after the reordering).
 =#
 function reorder!(T::Mat, Q::Mat, vals::Vector{Num}, S::Vector{Int64}, p::Int64)
 	where {Mat<:Matrix{Number}, Num<:Number}
 
-	blocksize = zeros(Int64, p)
 	# for each set, calculate its mean position in S:
 	pos = zeros(Float64, p)
 	count = zeros(Int64, p)
@@ -88,22 +87,19 @@ function reorder!(T::Mat, Q::Mat, vals::Vector{Num}, S::Vector{Int64}, p::Int64)
 	end
 	pos ./= count
 
-	ilst = 1
+	reordered = 0
+	blockend = zeros(Int64, p)
 	for set = 1:p
 		minset = indmin(pos)
-		for ifst = ilst:length(S)
-			if S[ifst] == minset
-				if ifst != ilst
-					LAPACK.trexc!('V', ifst, ilst, T, Q)
-					S[ilst], S[ilst+1:ifst] = S[ifst], S[ilst:ifst-1]
-				end
-				ilst += 1
-				blocksize[set] += 1
-			end
-		end
+		select = [i <= reordered || S[i] == minset for i = 1:lenght(S)]
+		ordschur(select) // must order vals!
+		# reorder S accordingly
+		ordvec(S, select)
+		reordered = count(select)
+		blockend[set] = reordered
 		pos[minset] = Inf
 	end
-	return blocksize
+	return blockend
 end
 
 #=
