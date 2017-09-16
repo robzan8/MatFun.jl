@@ -10,7 +10,7 @@ vals is the vector of eigenvalues, delta is the tolerance.
 The function returns S and p. S is the pattern, where S[i] = s means that
 vals[i] has been assigned to set s. p is the number of sets identified.
 =#
-function blockpattern(MatType::Type, vals::Vector{Num}, delta::Float64) where {Num<:Number}
+function blockpattern(Num::Type, vals::Vector{C}, delta::Float64) where {C<:Complex}
 	unassigned = -1
 	S = fill(unassigned, length(vals))
 	p = 0
@@ -54,7 +54,7 @@ function blockpattern(MatType::Type, vals::Vector{Num}, delta::Float64) where {N
 		end
 	end
 
-	if MatType <: Real
+	if Num <: Real
 		# complex conjugate eigenvalues can't be separated in the
 		# real schur factorization, so we merge the sets involving them:
 		for i = 1:length(vals)-1
@@ -74,8 +74,8 @@ The entries of S are also reordered together with the corresponding eigenvalues.
 The function returns vector blocksize: blocksize[i] is the size of the i-th
 leading block on T's diagonal (after the reordering).
 =#
-function reorder!(T::Matrix{MatType}, Q::Matrix{MatType}, vals::Vector{Num}, S::Vector{Int64}, p::Int64)
-	where {MatType<:Number, Num<:Number}
+function reorder!(T::Matrix{Num}, Q::Matrix{Num}, vals::Vector{C}, S::Vector{Int64}, p::Int64)
+	where {Num<:Number, C<:Complex}
 
 	# for each set, calculate its mean position in S:
 	pos = zeros(Float64, p)
@@ -93,7 +93,7 @@ function reorder!(T::Matrix{MatType}, Q::Matrix{MatType}, vals::Vector{Num}, S::
 		minset = indmin(pos)
 		for ifst = ilst:length(S)
 			if S[ifst] == minset
-				if MatType <: Real && imag(vals[ifst]) != 0
+				if Num <: Real && imag(vals[ifst]) != 0
 					if ifst != ilst
 						LAPACK.trexc!('V', ifst, ilst, T, Q)
 						vals[ilst:ilst+1], vals[ilst+2:ifst+1] = vals[ifst:ifst+1], vals[ilst:ifst-1]
@@ -166,11 +166,12 @@ end
 parlettrec computes and returns f(T) using the Parlett recurrence.
 T is block-triangular and blockend contains the indices at which each block ends.
 The paper suggests to do the recurrence iteratively (Algorithm 5.1), we do it
-recursively. This gives us better performance, as the recursion is cache oblivious.
-Also, the iterative version suffered overheads in the non-uncommon case of many
-small blocks.
+recursively. We experimented with various versions of the Parlett recurrence,
+this gave us the best performance.
 =#
-function parlettrec(f::Func, T::Matrix{Num}, blockend::Vector{Int64}) where {Func, Num<:Number}
+function parlettrec(f::Func, T::Matrix{Num}, vals::Vector{C}, blockend::Vector{Int64})
+	where {Func, Num<:Number, C<:Complex}
+	
 	@assert length(blockend) > 0
 	if length(blockend) == 1
 		return atomicblock(f, T)
@@ -186,10 +187,20 @@ function parlettrec(f::Func, T::Matrix{Num}, blockend::Vector{Int64}) where {Fun
 	F11 = parlettrec(f, T11, blockend[1:b])
 	F22 = parlettrec(f, T22, blockend[b+1:end] .- bend)
 	
-	# Parlett says: T11*F12 - F12*T22 = F11*T12 - T12*F22
+	# T11*F12 - F12*T22 = F11*T12 - T12*F22
 	F12, scale = LAPACK.trsyl!('N', 'N', T11, T22, F11*T12 - T12*F22, -1)
 
 	return [F11 F12/scale; zeros(T21) F22]
+end
+
+# As of Julia 0.6, schur is not type-stable.
+function schurstable(A::Matrix{R}) where {R<:Real}
+	T, Q, vals = schur(A)
+	return Matrix{R}(T), Matrix{R}(Q), Vector{Complex{R}}(vals)
+end
+function schurstable(A::Matrix{C}) where {C<:Complex}
+	T, Q, vals = schur(A)
+	return Matrix{C}(T), Matrix{C}(Q), Vector{C}(vals)
 end
 
 function schurparlett(f::Func, A::Matrix{C}) where {Func, C<:Complex}
@@ -197,7 +208,7 @@ function schurparlett(f::Func, A::Matrix{C}) where {Func, C<:Complex}
 		return schurparlett(f, A, eye(A))
 	end
 
-	T, Q, vals = schur(A)
+	T, Q, vals = schurstable(A)
 	return schurparlett(f, T, Q)
 end
 
