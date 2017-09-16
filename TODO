@@ -1,6 +1,5 @@
 profiling
 schurparlett on almost triangular/diagonal matrices (rounding errors)
 comments
-schur is not type stable?!
 calculate flops of the 3 parlett recurrence versions (complex and non)
 rewrite tests for real case

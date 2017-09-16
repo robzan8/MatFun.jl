@@ -121,7 +121,7 @@ end
 #=
 atomicblock computes f(T) using Taylor as described in Algorithm 2.6.
 =#
-function atomicblock(f::Func, T::Matrix{C}) where {Func, C}
+function atomicblock(f::Func, T::Matrix{Num}, me::Num) where {Func, Num<:Number}
 	n = size(T, 1)
 	if n == 1
 		return f.(T)
@@ -129,7 +129,6 @@ function atomicblock(f::Func, T::Matrix{C}) where {Func, C}
 
 	maxiter = 300
 	lookahead = 10
-	σ = mean(diag(T))
 	tay = f(σ + Taylor1(typeof(σ), 20+lookahead))
 	M = UpperTriangular(T - σ*eye(T))
 	P = M
@@ -155,11 +154,31 @@ function atomicblock(f::Func, T::Matrix{C}) where {Func, C}
 			=#
 			∆ = maximum(abs.(tay.coeffs[k+2:k+1+lookahead]))
 			if ∆*max(normP, norm(P, Inf)) <= small
-				break
+				return Matrix{C}(F)
 			end
 		end
 	end
-	return Matrix{C}(F)
+	error("Taylor did not converge. We assume f(conj(x)) == conj(f(x)), maybe not?")
+end
+
+function atomicblock(f::Func, T::Matrix{R}, vals::Vector{C}) where {Func, R<:Real, C<:Complex}
+	Fr = Matrix{R}(0, 0)
+	if any(imag.(vals) .== 0) # find a better one?
+		me = R(mean(real.(vals)))
+		Fr = atomicblock(f, T, me)
+	else
+		me = mean(filter((x) -> imag(x) >= 0, vals))
+		Fc = atomicblock(f, Matrix{C}(T), me)
+		Fr = real.(Fc)
+		if norm(imag.(Fc), Inf) > 1000*eps()*norm(Fr, Inf)
+			error("T is a real matrix and f(T) has a non-negligible imaginary part.")
+			# you may want to run the complex version of schurparlett.
+		end
+	end
+	return Matrix{R}(Fr)
+end
+function atomicblock(f::Func, T::Matrix{C}, vals::Vector{C}) where {Func, C<:Complex}
+	return atomicblock(f, T, mean(vals))
 end
 
 #=
@@ -171,10 +190,10 @@ this gave us the best performance.
 =#
 function parlettrec(f::Func, T::Matrix{Num}, vals::Vector{C}, blockend::Vector{Int64})
 	where {Func, Num<:Number, C<:Complex}
-	
+
 	@assert length(blockend) > 0
 	if length(blockend) == 1
-		return atomicblock(f, T)
+		return atomicblock(f, T, vals)
 	end
 
 	# split T in 2x2 superblocks of size ~n/2:
@@ -185,7 +204,7 @@ function parlettrec(f::Func, T::Matrix{Num}, vals::Vector{C}, blockend::Vector{I
 	T21, T22 = view(T, bend+1:n, 1:bend), T[bend+1:n, bend+1:n]
 
 	F11 = parlettrec(f, T11, blockend[1:b])
-	F22 = parlettrec(f, T22, blockend[b+1:end] .- bend)
+	F22 = parlettrec(f, T22, blockend[b+1:end] .- bend) # vals!!!!!
 	
 	# T11*F12 - F12*T22 = F11*T12 - T12*F22
 	F12, scale = LAPACK.trsyl!('N', 'N', T11, T22, F11*T12 - T12*F22, -1)
