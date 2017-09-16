@@ -10,7 +10,7 @@ vals is the vector of eigenvalues, delta is the tolerance.
 The function returns S and p. S is the pattern, where S[i] = s means that
 vals[i] has been assigned to set s. p is the number of sets identified.
 =#
-function blockpattern(vals::Vector{Num}, delta::Float64) where {Num<:Number}
+function blockpattern(MatType::Type, vals::Vector{Num}, delta::Float64) where {Num<:Number}
 	unassigned = -1
 	S = fill(unassigned, length(vals))
 	p = 0
@@ -25,16 +25,17 @@ function blockpattern(vals::Vector{Num}, delta::Float64) where {Num<:Number}
 	end
 	# merge sets s and t.
 	function mergesets(s::Int64, t::Int64)
-		@assert s != t
-		smin, smax = minmax(s, t)
-		for k = 1:length(vals)
-			if S[k] == smax
-				S[k] = smin
-			elseif S[k] > smax
-				S[k] -= 1
+		if s != t
+			smin, smax = minmax(s, t)
+			for k = 1:length(vals)
+				if S[k] == smax
+					S[k] = smin
+				elseif S[k] > smax
+					S[k] -= 1
+				end
 			end
+			p -= 1
 		end
-		p -= 1
 	end
 
 	for i = 1:length(vals)
@@ -43,7 +44,7 @@ function blockpattern(vals::Vector{Num}, delta::Float64) where {Num<:Number}
 			assign(i, p)
 		end
 		for j = i+1:length(vals)
-			if S[j] != S[i] && abs(vals[i]-vals[j]) <= delta
+			if abs(vals[i]-vals[j]) <= delta
 				if S[j] == unassigned
 					assign(j, S[i])
 				else
@@ -53,14 +54,13 @@ function blockpattern(vals::Vector{Num}, delta::Float64) where {Num<:Number}
 		end
 	end
 
-	# complex conjugate eigenvalues can't be separated,
-	# so we merge those sets:
-	for i = 1:length(vals)
-		if imag(vals[i]) != 0
-			for j = i+1:length(vals)
-				if vals[i] == conj(vals[j]) && S[i] != S[j]
-					mergesets(S[i], S[j])
-				end
+	if MatType <: Real
+		# complex conjugate eigenvalues can't be separated in the
+		# real schur factorization, so we merge the sets involving them:
+		for i = 1:length(vals)-1
+			if imag(vals[i]) != 0
+				mergesets(S[i], S[i+1])
+				i += 1
 			end
 		end
 	end
@@ -74,8 +74,8 @@ The entries of S are also reordered together with the corresponding eigenvalues.
 The function returns vector blocksize: blocksize[i] is the size of the i-th
 leading block on T's diagonal (after the reordering).
 =#
-function reorder!(T::Mat, Q::Mat, vals::Vector{Num}, S::Vector{Int64}, p::Int64)
-	where {Mat<:Matrix{Number}, Num<:Number}
+function reorder!(T::Matrix{MatType}, Q::Matrix{MatType}, vals::Vector{Num}, S::Vector{Int64}, p::Int64)
+	where {MatType<:Number, Num<:Number}
 
 	# for each set, calculate its mean position in S:
 	pos = zeros(Float64, p)
@@ -87,19 +87,35 @@ function reorder!(T::Mat, Q::Mat, vals::Vector{Num}, S::Vector{Int64}, p::Int64)
 	end
 	pos ./= count
 
-	reordered = 0
-	blockend = zeros(Int64, p)
+	blocksize = zeros(Int64, p)
+	ilst = 1
 	for set = 1:p
 		minset = indmin(pos)
-		select = [i <= reordered || S[i] == minset for i = 1:lenght(S)]
-		ordschur(select) // must order vals!
-		# reorder S accordingly
-		ordvec(S, select)
-		reordered = count(select)
-		blockend[set] = reordered
+		for ifst = ilst:length(S)
+			if S[ifst] == minset
+				if MatType <: Real && imag(vals[ifst]) != 0
+					if ifst != ilst
+						LAPACK.trexc!('V', ifst, ilst, T, Q)
+						vals[ilst:ilst+1], vals[ilst+2:ifst+1] = vals[ifst:ifst+1], vals[ilst:ifst-1]
+						S[ilst:ilst+1], S[ilst+2:ifst+1] = S[ifst:ifst+1], S[ilst:ifst-1]
+					end
+					ilst += 2
+					ifst += 1
+					blocksize[set] += 2
+				end
+					if ifst != ilst
+						LAPACK.trexc!('V', ifst, ilst, T, Q)
+						vals[ilst], vals[ilst+1:ifst] = vals[ifst], vals[ilst:ifst-1]
+						S[ilst], S[ilst+1:ifst] = S[ifst], S[ilst:ifst-1]
+					end
+					ilst += 1
+					blocksize[set] += 1
+				else
+			end
+		end
 		pos[minset] = Inf
 	end
-	return blockend
+	return blocksize
 end
 
 #=
