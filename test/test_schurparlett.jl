@@ -2,26 +2,32 @@ using MatFun, Base.Test
 
 @testset "blockpattern" begin
 	vals = zeros(Complex128, 10)
-	S, p = MatFun.blockpattern(vals, 0.1)
+	S, p = MatFun.blockpattern(vals, Complex128)
 	@test S == fill(1, length(vals))
 	@test p == 1
 
 	vals = Vector{Complex128}(collect(1:10))
-	S, p = MatFun.blockpattern(vals, 0.1)
+	S, p = MatFun.blockpattern(vals, Complex128)
 	@test S == vals
 	@test p == length(vals)
 
-	vals = [1, 1+0.1im, 2, 3, 1+0.2im, 2+0.1im, 2+0.2im, 3, 3, 3+0.1im, 3+0.2im, 1, 1+0.3im]
-	S, p = MatFun.blockpattern(vals, 0.10001)
+	vals = Vector{Complex128}(randperm(20)*0.09)
+	S, p = MatFun.blockpattern(vals, Complex128)
+	@test S == fill(1, length(vals))
+	@test p == 1
+
+	vals = [1, 1+0.09im, 2, 3, 1+0.19im, 2+0.09im, 2+0.19im, 3, 3, 3+0.09im, 3+0.19im, 1, 1+0.29im]
+	S, p = MatFun.blockpattern(vals, Complex128)
 	@test S == real.(vals)
 	@test p == 3
 
-	vals = Vector{Complex128}(randperm(20))
-	S, p = MatFun.blockpattern(vals, 1.0)
-	@test S == fill(1, length(vals))
-	@test p == 1
+	vals = [1, 1+4im, 1-4im, 3, 1+4.05im, 1-4.05im, 2, 3, 3, 3+0.09im, 3-0.09im, 1, 1]
+	S, p = MatFun.blockpattern(vals, Float64)
+	@test S[1] != S[2] && S[2] == S[3] && S[2] == S[5] && S[5] == S[6]
+	@test S[10] == S[11] && S[10] == S[9] && S[10] != S[12]
+	@test p == 4
 end
-
+#=
 @testset "reorder" begin
 	vals = Vector{Complex128}([1, 1, 1, 1, 1, 2, 1, 2, 3, 2, 2, 3, 3, 1, 3])
 	T = diagm(vals)
@@ -138,3 +144,4 @@ end
 		@test relerr <= tol
 	end
 end
+=#

@@ -2,40 +2,43 @@
 This file implements the algorithm described in:
 "A Schur-Parlett Algorithm for Computing Matrix Functions"
 (Davies and Higham, 2003)
+One major modification was made to the algorithm:
+it works in real arithmetic for real matrices.
 =#
 
 #=
 blockpattern groups eigenvalues in sets, implementing Algorithm 4.1 of the paper.
-vals is the vector of eigenvalues, delta is the tolerance.
 The function returns S and p. S is the pattern, where S[i] = s means that
 vals[i] has been assigned to set s. p is the number of sets identified.
 =#
-function blockpattern(Num::Type, vals::Vector{C}, delta::Float64) where {C<:Complex}
+delta = 0.1
+function blockpattern(vals::Vector{C}, schurtype::Type) where {C<:Complex}
 	unassigned = -1
 	S = fill(unassigned, length(vals))
 	p = 0
 
 	# assign vals[i] to set s.
 	function assign(i::Int64, s::Int64)
+		lambda = vals[i]
 		for k = i:length(vals)
-			if vals[k] == vals[i]
+			if vals[k] == lambda
 				S[k] = s
 			end
 		end
 	end
-	# merge sets s and t.
 	function mergesets(s::Int64, t::Int64)
-		if s != t
-			smin, smax = minmax(s, t)
-			for k = 1:length(vals)
-				if S[k] == smax
-					S[k] = smin
-				elseif S[k] > smax
-					S[k] -= 1
-				end
-			end
-			p -= 1
+		if s == t
+			return
 		end
+		smin, smax = minmax(s, t)
+		for k = 1:length(vals)
+			if S[k] == smax
+				S[k] = smin
+			elseif S[k] > smax
+				S[k] -= 1
+			end
+		end
+		p -= 1
 	end
 
 	for i = 1:length(vals)
@@ -54,12 +57,15 @@ function blockpattern(Num::Type, vals::Vector{C}, delta::Float64) where {C<:Comp
 		end
 	end
 
-	if Num <: Real
+	if schurtype <: Real
 		# complex conjugate eigenvalues can't be separated in the
-		# real schur factorization, so we merge the sets involving them:
-		for i = 1:length(vals)-1
+		# real Schur factorization, so we merge the sets involving them:
+		i = 1
+		while i < length(vals)
 			if imag(vals[i]) != 0
 				mergesets(S[i], S[i+1])
+				i += 2
+			else
 				i += 1
 			end
 		end
@@ -74,9 +80,7 @@ The entries of S are also reordered together with the corresponding eigenvalues.
 The function returns vector blocksize: blocksize[i] is the size of the i-th
 leading block on T's diagonal (after the reordering).
 =#
-function reorder!(T::Matrix{Num}, Q::Matrix{Num}, vals::Vector{C}, S::Vector{Int64}, p::Int64)
-	where {Num<:Number, C<:Complex}
-
+function reorder!(T::Matrix{Num}, Q::Matrix{Num}, vals::Vector{C}, S::Vector{Int64}, p::Int64) where {Num<:Number, C<:Complex}
 	# for each set, calculate its mean position in S:
 	pos = zeros(Float64, p)
 	count = zeros(Int64, p)
@@ -87,41 +91,34 @@ function reorder!(T::Matrix{Num}, Q::Matrix{Num}, vals::Vector{C}, S::Vector{Int
 	end
 	pos ./= count
 
-	blocksize = zeros(Int64, p)
-	ilst = 1
-	for set = 1:p
-		minset = indmin(pos)
-		for ifst = ilst:length(S)
-			if S[ifst] == minset
-				if Num <: Real && imag(vals[ifst]) != 0
-					if ifst != ilst
-						LAPACK.trexc!('V', ifst, ilst, T, Q)
-						vals[ilst:ilst+1], vals[ilst+2:ifst+1] = vals[ifst:ifst+1], vals[ilst:ifst-1]
-						S[ilst:ilst+1], S[ilst+2:ifst+1] = S[ifst:ifst+1], S[ilst:ifst-1]
-					end
-					ilst += 2
-					ifst += 1
-					blocksize[set] += 2
-				end
-					if ifst != ilst
-						LAPACK.trexc!('V', ifst, ilst, T, Q)
-						vals[ilst], vals[ilst+1:ifst] = vals[ifst], vals[ilst:ifst-1]
-						S[ilst], S[ilst+1:ifst] = S[ifst], S[ilst:ifst-1]
-					end
-					ilst += 1
-					blocksize[set] += 1
-				else
+	function ordvec(v::Vector{T}, select::Vector{Bool}) where {T}
+		ilst = 1
+		for ifst = 1:length(v)
+			if select[ifst] && ifst != ilst
+				v[ilst], v[ilst+1:ifst] = v[ifst], v[ilst:ifst-1]
+				ilst += 1
 			end
 		end
+	end
+
+	blockend = zeros(Int64, p)
+	for set = 1:p
+		ordered = set == 1 ? 0 : blockend[set-1]
+		minset = indmin(pos)
+		select = [i <= ordered || S[i] == minset for i = 1:length(S)]
+		trsen!
+		ordvec(vals, select)
+		ordvec(S, select)
+		blockend[set] = count(select)
 		pos[minset] = Inf
 	end
-	return blocksize
+	return blockend
 end
 
 #=
 atomicblock computes f(T) using Taylor as described in Algorithm 2.6.
 =#
-function atomicblock(f::Func, T::Matrix{Num}, me::Num) where {Func, Num<:Number}
+function evaltaylor(f::Func, T::Matrix{Num}, me::Num) where {Func, Num<:Number}
 	n = size(T, 1)
 	if n == 1
 		return f.(T)
@@ -158,27 +155,43 @@ function atomicblock(f::Func, T::Matrix{Num}, me::Num) where {Func, Num<:Number}
 			end
 		end
 	end
-	error("Taylor did not converge. We assume f(conj(x)) == conj(f(x)), maybe not?")
+	error("Taylor did not converge.")
 end
 
-function atomicblock(f::Func, T::Matrix{R}, vals::Vector{C}) where {Func, R<:Real, C<:Complex}
+function hermitematrix(f::Taylor1{C}, s::C, n::Int64) where {C<:Complex}
+	m = length(f.coeffs)
+
+	H = zeros(C, m, n)
+	H[1,1] = s^0
+	for j = 2:n
+		H[1,j] = H[1,j-1]*s
+	end
+	for i = 2:m
+		for j = i:n
+			H[i,j] = H[i-1,j-1]*((j-1)/(i-1))
+		end
+	end
+	return H
+end
+
+function atomicblock(f::Func, T::Matrix{R}, vals::Vector{Complex{R}}) where {Func, R<:Real}
 	Fr = Matrix{R}(0, 0)
 	if any(imag.(vals) .== 0) # find a better one?
-		me = R(mean(real.(vals)))
-		Fr = atomicblock(f, T, me)
+		me = mean(real.(vals))
+		Fr = evaltaylor(f, T, me)
 	else
 		me = mean(filter((x) -> imag(x) >= 0, vals))
-		Fc = atomicblock(f, Matrix{C}(T), me)
+		Fc = evalhermite(f, Matrix{Complex{R}}(T), me, conj(me))
 		Fr = real.(Fc)
 		if norm(imag.(Fc), Inf) > 1000*eps()*norm(Fr, Inf)
 			error("T is a real matrix and f(T) has a non-negligible imaginary part.")
 			# you may want to run the complex version of schurparlett.
 		end
 	end
-	return Matrix{R}(Fr)
+	return Fr
 end
 function atomicblock(f::Func, T::Matrix{C}, vals::Vector{C}) where {Func, C<:Complex}
-	return atomicblock(f, T, mean(vals))
+	return evaltaylor(f, T, mean(vals))
 end
 
 #=
@@ -188,8 +201,7 @@ The paper suggests to do the recurrence iteratively (Algorithm 5.1), we do it
 recursively. We experimented with various versions of the Parlett recurrence,
 this gave us the best performance.
 =#
-function parlettrec(f::Func, T::Matrix{Num}, vals::Vector{C}, blockend::Vector{Int64})
-	where {Func, Num<:Number, C<:Complex}
+function parlettrec(f::Func, T::Matrix{Num}, vals::Vector{C}, blockend::Vector{Int64}) where {Func, Num<:Number, C<:Complex}
 
 	@assert length(blockend) > 0
 	if length(blockend) == 1
@@ -212,22 +224,12 @@ function parlettrec(f::Func, T::Matrix{Num}, vals::Vector{C}, blockend::Vector{I
 	return [F11 F12/scale; zeros(T21) F22]
 end
 
-# As of Julia 0.6, schur is not type-stable.
-function schurstable(A::Matrix{R}) where {R<:Real}
-	T, Q, vals = schur(A)
-	return Matrix{R}(T), Matrix{R}(Q), Vector{Complex{R}}(vals)
-end
-function schurstable(A::Matrix{C}) where {C<:Complex}
-	T, Q, vals = schur(A)
-	return Matrix{C}(T), Matrix{C}(Q), Vector{C}(vals)
-end
-
 function schurparlett(f::Func, A::Matrix{C}) where {Func, C<:Complex}
 	if istriu(A)
 		return schurparlett(f, A, eye(A))
 	end
 
-	T, Q, vals = schurstable(A)
+	T, Q, vals = gees!(A)
 	return schurparlett(f, T, Q)
 end
 
