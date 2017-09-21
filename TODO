@@ -3,4 +3,4 @@ schurparlett on almost triangular/diagonal matrices (rounding errors)
 comments
 calculate flops of the 3 parlett recurrence versions (complex and non)
 rewrite tests for real case
-Hermite: Vandermonde matrices are bad https://arxiv.org/abs/1504.02118
+delta (api/testing)

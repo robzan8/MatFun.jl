@@ -82,20 +82,22 @@ The returned vector, blockend, contains the indices at which each block ends
 function reorder!(T::Matrix{N}, Q::Matrix{N}, vals::Vector{C}, S::Vector{Int64}, p::Int64) where {N<:Number, C<:Complex}
 	# for each set, calculate its mean position in S:
 	pos = zeros(Float64, p)
-	count = zeros(Int64, p)
+	cou = zeros(Int64, p)
 	for i = 1:length(S)
 		set = S[i]
 		pos[set] += i
-		count[set] += 1
+		cou[set] += 1
 	end
-	pos ./= count
+	pos ./= cou
 
-	# analogous to trsen:
-	function ordvec(v::Vector{T}, select::Vector{Bool}) where {T}
+	# analogous to ordschur/trsen:
+	function ordvec!(v::Vector{T}, select::Vector{Bool}) where {T}
 		ilst = 1
 		for ifst = 1:length(v)
-			if select[ifst] && ifst != ilst
-				v[ilst], v[ilst+1:ifst] = v[ifst], v[ilst:ifst-1]
+			if select[ifst]
+				if ifst != ilst
+					v[ilst], v[ilst+1:ifst] = v[ifst], v[ilst:ifst-1]
+				end
 				ilst += 1
 			end
 		end
@@ -106,9 +108,10 @@ function reorder!(T::Matrix{N}, Q::Matrix{N}, vals::Vector{C}, S::Vector{Int64},
 		numordered = (set == 1) ? 0 : blockend[set-1]
 		minset = indmin(pos)
 		select = [i <= numordered || S[i] == minset for i = 1:length(S)]
-		LAPACK.trsen!('V', 'N', select, T, Q)
-		ordvec(vals, select)
-		ordvec(S, select)
+		println(select)
+		ordschur!(T, Q, select)
+		ordvec!(vals, select)
+		ordvec!(S, select)
 		blockend[set] = count(select)
 		pos[minset] = Inf
 	end
