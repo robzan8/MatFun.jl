@@ -27,20 +27,21 @@ using MatFun, Base.Test
 	@test S[10] == S[11] && S[10] == S[9] && S[10] != S[12]
 	@test p == 4
 end
-#=
+
 @testset "reorder" begin
 	vals = Vector{Complex128}([1, 1, 1, 1, 1, 2, 1, 2, 3, 2, 2, 3, 3, 1, 3])
 	T = diagm(vals)
-	Q = eye(Complex128, length(vals))
+	Q = eye(T)
 	A = copy(T)
-	S, p = MatFun.blockpattern(vals, 0.1)
-	blocksize = MatFun.reorder!(T, Q, S, p)
+	S, p = MatFun.blockpattern(vals, Complex128)
+	blockend = MatFun.reorder!(T, Q, vals, S, p)
 	newvals = [1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3]
 	@test T == diagm(newvals)
+	@test vals == newvals
 	@test Q*T*Q' == A
 	@test S == newvals
-	@test blocksize == [7, 4, 4]
-
+	@test blocksize == cumsum([7, 4, 4])
+#=
 	srand(42)
 	A = Matrix{Complex128}(randn(20, 20))
 	@test cond(A) <= 1000
@@ -63,9 +64,9 @@ end
 			@test abs(newvals[i]-newvals[j]) > delta
 		end
 	end
-	@test Q*T*Q' ≈ A
+	@test Q*T*Q' ≈ A=#
 end
-
+#=
 @testset "atomicblock" begin
 	for t = 1:2
 		n = 10

@@ -74,13 +74,12 @@ function blockpattern(vals::Vector{C}, schurtype::Type) where {C<:Complex}
 end
 
 #=
-reorder reorders the complex Schur decomposition (T, Q, vals) according to pattern S,
+reorder reorders the Schur decomposition (T, Q, vals) according to pattern S,
 using the swapping strategy described in Algorithm 4.2.
-The entries of S are also reordered together with the corresponding eigenvalues.
-The function returns vector blocksize: blocksize[i] is the size of the i-th
-leading block on T's diagonal (after the reordering).
+The returned vector, blockend, contains the indices at which each block ends
+(after the reordering).
 =#
-function reorder!(T::Matrix{Num}, Q::Matrix{Num}, vals::Vector{C}, S::Vector{Int64}, p::Int64) where {Num<:Number, C<:Complex}
+function reorder!(T::Matrix{N}, Q::Matrix{N}, vals::Vector{C}, S::Vector{Int64}, p::Int64) where {N<:Number, C<:Complex}
 	# for each set, calculate its mean position in S:
 	pos = zeros(Float64, p)
 	count = zeros(Int64, p)
@@ -91,6 +90,7 @@ function reorder!(T::Matrix{Num}, Q::Matrix{Num}, vals::Vector{C}, S::Vector{Int
 	end
 	pos ./= count
 
+	# analogous to trsen:
 	function ordvec(v::Vector{T}, select::Vector{Bool}) where {T}
 		ilst = 1
 		for ifst = 1:length(v)
@@ -103,10 +103,10 @@ function reorder!(T::Matrix{Num}, Q::Matrix{Num}, vals::Vector{C}, S::Vector{Int
 
 	blockend = zeros(Int64, p)
 	for set = 1:p
-		ordered = set == 1 ? 0 : blockend[set-1]
+		numordered = (set == 1) ? 0 : blockend[set-1]
 		minset = indmin(pos)
-		select = [i <= ordered || S[i] == minset for i = 1:length(S)]
-		trsen!
+		select = [i <= numordered || S[i] == minset for i = 1:length(S)]
+		LAPACK.trsen!('V', 'N', select, T, Q)
 		ordvec(vals, select)
 		ordvec(S, select)
 		blockend[set] = count(select)
