@@ -38,33 +38,24 @@ end
 	newvals = [1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3]
 	@test T == diagm(newvals)
 	@test vals == newvals
-	#@test Q*T*Q' == A
-	#@test S == newvals
-	#@test blocksize == cumsum([7, 4, 4])
-#=
+	@test Q*T*Q' == A
+	@test S == newvals
+	@test blockend == cumsum([7, 4, 4])
+
 	srand(42)
-	A = Matrix{Complex128}(randn(20, 20))
+	A = Matrix{Complex128}(randn(20, 20)/18)
 	@test cond(A) <= 1000
 	T, Q, vals = schur(A)
-	delta = 1.8
-	S, p = MatFun.blockpattern(vals, delta)
-	blocksize = MatFun.reorder!(T, Q, S, p)
-	newvals = diag(T)
-	a = 1
-	for set = 1:p
-		b = a + blocksize[set] - 1
-		for i = a+1:b
-			@test S[a] == S[i] && abs(newvals[a]-newvals[i]) <= delta*blocksize[set]+sqrt(eps())
-		end
-		a = b + 1
-	end
-	for i = 1:length(newvals)÷2
-		j = length(newvals) - i + 1
+	S, p = MatFun.blockpattern(vals, Complex128)
+	MatFun.reorder!(T, Q, vals, S, p)
+	@test vals == diag(T)
+	for i = 1:length(vals)÷2
+		j = length(vals) - i + 1
 		if S[i] != S[j]
-			@test abs(newvals[i]-newvals[j]) > delta
+			@test abs(vals[i]-vals[j]) > MatFun.delta
 		end
 	end
-	@test Q*T*Q' ≈ A=#
+	@test Q*T*Q' ≈ A
 end
 #=
 @testset "atomicblock" begin

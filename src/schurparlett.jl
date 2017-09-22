@@ -108,7 +108,6 @@ function reorder!(T::Matrix{N}, Q::Matrix{N}, vals::Vector{C}, S::Vector{Int64},
 		numordered = (set == 1) ? 0 : blockend[set-1]
 		minset = indmin(pos)
 		select = [i <= numordered || S[i] == minset for i = 1:length(S)]
-		println(select)
 		ordschur!(T, Q, select)
 		ordvec!(vals, select)
 		ordvec!(S, select)
