@@ -1,4 +1,4 @@
-using MatFun, Base.Test
+using MatFun, TaylorSeries, Base.Test
 
 @testset "blockpattern" begin
 	vals = zeros(Complex128, 10)
@@ -56,6 +56,23 @@ end
 		end
 	end
 	@test Q*T*Q' ≈ A
+end
+
+@testset "hermitecoeffs" begin
+	for f = [exp, sin]
+		shift = 2.0 + 3.0im
+		hc, shift2 = MatFun.hermitecoeffs(f, shift, 0)
+		println(hc)
+		n, m = length(hc), length(hc)÷2
+		tay1 = f(shift + Taylor1(typeof(shift), m-1))
+		tay2 = f(conj(shift) + Taylor1(typeof(shift), m-1))
+		herm = Taylor1(hc, n-1)
+		for i = 1:m
+			@test evaluate(tay1, 0.0) ≈ evaluate(herm, shift-shift2)
+			@test evaluate(tay2, 0.0) ≈ evaluate(herm, conj(shift-shift2))
+			tay1, tay2, herm = derivative(tay1), derivative(tay2), derivative(herm)
+		end
+	end
 end
 #=
 @testset "atomicblock" begin
