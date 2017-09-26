@@ -117,76 +117,21 @@ function reorder!(T::Matrix{N}, Q::Matrix{N}, vals::Vector{C}, S::Vector{Int64},
 	return blockend
 end
 
-function taylorcoeffs(f::Func, shift::N, n::Int64) where {Func, N<:Number}
-	n = max(10, n*2)
-	return f(shift + Taylor1(N, n-1)).coeffs, shift
-end
-
-function hermitecoeffs(f::Func, shift::C, n::Int64) where {Func, C<:Complex}
-	n = max(10, n*2) # should be something else?
-	m = n÷2
-	c1 = f(shift + Taylor1(C, m-1)).coeffs
-	c2 = f(conj(shift) + Taylor1(C, m-1)).coeffs
-
-	# find the coefficients of p as the solution of the
-	# linear system defined by the Hermite interpolation:
-	ishift = shift - real(shift)
-	H = zeros(C, m, n)
-	H[1,1] = ishift^0
-	for j = 2:n
-		H[1,j] = H[1,j-1]*ishift
-	end
-	for i = 2:m
-		for j = i:n
-			H[i,j] = H[i-1,j-1]*((j-1)/(i-1))
-		end
-	end
-	println(cond([H; conj.(H)]))
-	c = [H; conj.(H)] \ [c1; c2]
-
-	realc = real.(c)
-	if norm(imag.(c), Inf) > 1000*eps()*norm(realc, Inf)
-
-	end
-	return c, real(shift)
-end
-
-function hermitematrix(f::Taylor1{C}, s::C, n::Int64) where {C<:Complex}
-	m = length(f.coeffs)
-
-	H = zeros(C, m, n)
-	H[1,1] = s^0
-	for j = 2:n
-		H[1,j] = H[1,j-1]*s
-	end
-	for i = 2:m
-		for j = i:n
-			H[i,j] = H[i-1,j-1]*((j-1)/(i-1))
-		end
-	end
-	return H
-end
-
 #=
-atomicblock computes f(T) using Taylor as described in Algorithm 2.6.
+evaltaylor computes f(T) using Taylor as described in Algorithm 2.6.
 =#
-function evalseries(f::Func, T::Matrix{N}, shift::N) where {Func, N<:Number}
-	n = size(T, 1)
-	if n == 1
-		return f.(T)
-	end
-
+function evaltaylor(f::Func, T::Matrix{N}, shift::N) where {Func, N<:Number}
 	maxiter = 300
 	lookahead = 10
-	tay = f(σ + Taylor1(typeof(σ), 20+lookahead))
-	M = UpperTriangular(T - σ*eye(T))
+	tay = f(shift + Taylor1(N, 20+lookahead))
+	M = UpperTriangular(T - shift*eye(T))
 	P = M
 	F = UpperTriangular(tay.coeffs[1]*eye(T))
 	for k = 1:maxiter
 		needorder = k + lookahead
 		@assert needorder <= tay.order + 1
 		if needorder > tay.order
-			tay = f(σ + Taylor1(typeof(σ), min(maxiter+lookahead, tay.order*2)))
+			tay = f(shift + Taylor1(N, min(maxiter+lookahead, tay.order*2)))
 		end
 
 		Term = tay.coeffs[k+1] * P
@@ -201,9 +146,9 @@ function evalseries(f::Func, T::Matrix{N}, shift::N) where {Func, N<:Number}
 			estimating ||M^(k+r)|| with max(||M^k||, ||M^(k+1)||).
 			Works well in practice, at least for exp, log, sqrt and pow.
 			=#
-			∆ = maximum(abs.(tay.coeffs[k+2:k+1+lookahead]))
-			if ∆*max(normP, norm(P, Inf)) <= small
-				return Matrix{C}(F)
+			delta = maximum(abs.(tay.coeffs[k+2:k+1+lookahead]))
+			if delta*max(normP, norm(P, Inf)) <= small
+				return Matrix{N}(F)
 			end
 		end
 	end
@@ -211,6 +156,7 @@ function evalseries(f::Func, T::Matrix{N}, shift::N) where {Func, N<:Number}
 end
 
 function atomicblock(f::Func, T::Matrix{R}, vals::Vector{Complex{R}}) where {Func, R<:Real}
+	# handle here case size(T) == 1
 	Fr = Matrix{R}(0, 0)
 	if any(imag.(vals) .== 0) # find a better one?
 		me = mean(real.(vals))

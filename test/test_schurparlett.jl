@@ -58,24 +58,7 @@ end
 	@test Q*T*Q' ≈ A
 end
 
-@testset "hermitecoeffs" begin
-	for f = [exp, sin]
-		shift = 2.0 + 3.0im
-		hc, shift2 = MatFun.hermitecoeffs(f, shift, 0)
-		println(hc)
-		n, m = length(hc), length(hc)÷2
-		tay1 = f(shift + Taylor1(typeof(shift), m-1))
-		tay2 = f(conj(shift) + Taylor1(typeof(shift), m-1))
-		herm = Taylor1(hc, n-1)
-		for i = 1:m
-			@test evaluate(tay1, 0.0) ≈ evaluate(herm, shift-shift2)
-			@test evaluate(tay2, 0.0) ≈ evaluate(herm, conj(shift-shift2))
-			tay1, tay2, herm = derivative(tay1), derivative(tay2), derivative(herm)
-		end
-	end
-end
-#=
-@testset "atomicblock" begin
+@testset "evaltaylor" begin
 	for t = 1:2
 		n = 10
 		tol = 100*eps()
@@ -86,32 +69,41 @@ end
 			vals[i] = (t == 1) ? vals[1]+exp(im*2*pi*i/n) : vals[i-1]+rand()
 		end
 		vals *= 0.1
+		shift = mean(vals)
 		T = diagm(vals) + triu(randn(n, n), 1)
 		@test cond(T) <= 1000
 
 		F1 = LinAlg.expm(T)
-		F2 = MatFun.atomicblock(exp, T)
+		F2 = (t == 1)?
+			MatFun.evaltaylor(exp, T, shift):
+			MatFun.evaltaylor(exp, Matrix{Float64}(T), Float64(shift))
 		relerr = norm(F2-F1)/norm(F1)
 		@test relerr <= tol
 
 		F1 = LinAlg.logm(T)
-		F2 = MatFun.atomicblock(log, T)
+		F2 = (t == 1)?
+			MatFun.evaltaylor(log, T, shift):
+			MatFun.evaltaylor(log, Matrix{Float64}(T), Float64(shift))
 		relerr = norm(F2-F1)/norm(F1)
 		@test relerr <= tol
 
 		F1 = LinAlg.sqrtm(T)
-		F2 = MatFun.atomicblock(sqrt, T)
+		F2 = (t == 1)?
+			MatFun.evaltaylor(sqrt, T, shift):
+			MatFun.evaltaylor(sqrt, Matrix{Float64}(T), Float64(shift))
 		relerr = norm(F2-F1)/norm(F1)
 		@test relerr <= tol
 
 		pow = (x) -> x^Float64(pi)
 		F1 = pow(T)
-		F2 = MatFun.atomicblock(pow, T)
+		F2 = (t == 1)?
+			MatFun.evaltaylor(pow, T, shift):
+			MatFun.evaltaylor(pow, Matrix{Float64}(T), Float64(shift))
 		relerr = norm(F2-F1)/norm(F1)
 		@test relerr <= tol
 	end
 end
-
+#=
 @testset "schurparlett" begin
 	for t = 1:3
 		n = 10
