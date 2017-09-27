@@ -4,3 +4,4 @@ comments
 calculate flops of the 3 parlett recurrence versions (complex and non)
 rewrite tests for real case
 check type-stability (depending of the type of the matrix, vals and f)
+fix evaltaylor and evalhermite for quasi-triangular matrices.

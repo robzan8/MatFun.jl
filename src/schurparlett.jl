@@ -124,9 +124,9 @@ function evaltaylor(f::Func, T::Matrix{N}, shift::N) where {Func, N<:Number}
 	maxiter = 300
 	lookahead = 10
 	tay = f(shift + Taylor1(N, 20+lookahead))
-	M = UpperTriangular(T - shift*eye(T))
+	M = T - shift*eye(T)
 	P = M
-	F = UpperTriangular(tay.coeffs[1]*eye(T))
+	F = tay.coeffs[1]*eye(T)
 	for k = 1:maxiter
 		needorder = k + lookahead
 		@assert needorder <= tay.order + 1
@@ -144,15 +144,45 @@ function evaltaylor(f::Func, T::Matrix{N}, shift::N) where {Func, N<:Number}
 			The termination condition is loosely inspired to the one in the paper.
 			We check that the next lookahead terms in the series are small,
 			estimating ||M^(k+r)|| with max(||M^k||, ||M^(k+1)||).
-			Works well in practice, at least for exp, log, sqrt and pow.
+			Works well in practice, at least for exp, log and sqrt.
 			=#
 			delta = maximum(abs.(tay.coeffs[k+2:k+1+lookahead]))
 			if delta*max(normP, norm(P, Inf)) <= small
-				return Matrix{N}(F)
+				return F
 			end
 		end
 	end
 	error("Taylor did not converge.")
+end
+
+#=
+evalhermite
+=#
+function evalhermite(f::Func, T::Matrix{R}, shift::Complex{R}) where {Func, R<:Real}
+	m = 50
+	psi1(t) = f(t)/(t - conj(shift))
+	c = psi1(shift + Taylor1(Complex{R}, m-1)).coeffs
+	M = T - shift*eye(T)
+	P = (T - conj(shift)*eye(T))^m
+	F = c[1]*P
+	P = M*P
+	for j = 1:m-1
+		Term = c[j+1]*P
+		F += Term
+		normP = norm(P, Inf)
+		P = M*P
+		#=
+		small = eps()*norm(F, Inf)
+		if norm(Term, Inf) <= small
+			delta = maximum(abs.(tay.coeffs[k+2:k+1+lookahead]))
+			if delta*max(normP, norm(P, Inf)) <= small
+				return F
+			end
+		end
+		=#
+	end
+	return 2.0*real(F)
+	error("Hermite did not converge.")
 end
 
 function atomicblock(f::Func, T::Matrix{R}, vals::Vector{Complex{R}}) where {Func, R<:Real}
