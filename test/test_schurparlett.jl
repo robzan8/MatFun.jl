@@ -1,5 +1,5 @@
 using MatFun, TaylorSeries, Base.Test
-#=
+
 @testset "blockpattern" begin
 	vals = zeros(Complex128, 10)
 	S, p = MatFun.blockpattern(vals, Complex128)
@@ -75,21 +75,21 @@ end
 
 		F1 = LinAlg.expm(T)
 		F2 = (t == 1)?
-			MatFun.evaltaylor(exp, T, shift):
+			MatFun.evaltaylor(exp, UpperTriangular(T), shift):
 			MatFun.evaltaylor(exp, Matrix{Float64}(T), Float64(shift))
 		relerr = norm(F2-F1)/norm(F1)
 		@test relerr <= tol
 
 		F1 = LinAlg.logm(T)
 		F2 = (t == 1)?
-			MatFun.evaltaylor(log, T, shift):
+			MatFun.evaltaylor(log, UpperTriangular(T), shift):
 			MatFun.evaltaylor(log, Matrix{Float64}(T), Float64(shift))
 		relerr = norm(F2-F1)/norm(F1)
 		@test relerr <= tol
 
 		F1 = LinAlg.sqrtm(T)
 		F2 = (t == 1)?
-			MatFun.evaltaylor(sqrt, T, shift):
+			MatFun.evaltaylor(sqrt, UpperTriangular(T), shift):
 			MatFun.evaltaylor(sqrt, Matrix{Float64}(T), Float64(shift))
 		relerr = norm(F2-F1)/norm(F1)
 		@test relerr <= tol
@@ -97,54 +97,12 @@ end
 		pow = (x) -> x^Float64(pi)
 		F1 = pow(T)
 		F2 = (t == 1)?
-			MatFun.evaltaylor(pow, T, shift):
+			MatFun.evaltaylor(pow, UpperTriangular(T), shift):
 			MatFun.evaltaylor(pow, Matrix{Float64}(T), Float64(shift))
 		relerr = norm(F2-F1)/norm(F1)
 		@test relerr <= tol
 	end
 end
-=#
-@testset "evalhermite" begin
-	n = 10
-	tol = 100*eps()
-	srand(911)
-	vals = zeros(n)
-	vals[1] = 50
-	for i = 2:n
-		vals[i] = vals[i-1]+rand()
-	end
-	vals *= 0.1
-	shift = mean(vals) + 0.1im
-	T = diagm(vals) + triu(randn(n, n), 1)
-	@test cond(T) <= 1000
-
-	F1 = LinAlg.expm(T)
-	F2 = MatFun.evalhermite(exp, T, shift)
-	relerr = norm(F2-F1)/norm(F1)
-	@test relerr <= tol
-	#=
-	F1 = LinAlg.logm(T)
-	F2 = (t == 1)?
-		MatFun.evalhermite(log, T, shift):
-		MatFun.evalhermite(log, Matrix{Float64}(T), Float64(shift))
-	relerr = norm(F2-F1)/norm(F1)
-	@test relerr <= tol
-
-	F1 = LinAlg.sqrtm(T)
-	F2 = (t == 1)?
-		MatFun.evalhermite(sqrt, T, shift):
-		MatFun.evalhermite(sqrt, Matrix{Float64}(T), Float64(shift))
-	relerr = norm(F2-F1)/norm(F1)
-	@test relerr <= tol
-	pow = (x) -> x^Float64(pi)
-	F1 = pow(T)
-	F2 = (t == 1)?
-		MatFun.evalhermite(pow, T, shift):
-		MatFun.evalhermite(pow, Matrix{Float64}(T), Float64(shift))
-	relerr = norm(F2-F1)/norm(F1)
-	@test relerr <= tol=#
-end
-
 #=
 @testset "schurparlett" begin
 	for t = 1:3

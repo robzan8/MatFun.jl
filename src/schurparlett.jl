@@ -12,7 +12,7 @@ The function returns S and p. S is the pattern, where S[i] = s means that
 vals[i] has been assigned to set s. p is the number of sets identified.
 =#
 delta = 0.1
-function blockpattern(vals::Vector{C}, schurtype::Type) where {C<:Complex}
+function blockpattern(vals::Vector{C}, schurtype::Type)::Tuple{Vector{Int64}, Int64} where {C<:Complex}
 	unassigned = -1
 	S = fill(unassigned, length(vals))
 	p = 0
@@ -79,7 +79,7 @@ using the swapping strategy described in Algorithm 4.2.
 The returned vector, blockend, contains the indices at which each block ends
 (after the reordering).
 =#
-function reorder!(T::Matrix{N}, Q::Matrix{N}, vals::Vector{C}, S::Vector{Int64}, p::Int64) where {N<:Number, C<:Complex}
+function reorder!(T::Matrix{N}, Q::Matrix{N}, vals::Vector{C}, S::Vector{Int64}, p::Int64)::Vector{Int64} where {N<:Number, C<:Complex}
 	# for each set, calculate its mean position in S:
 	pos = zeros(Float64, p)
 	cou = zeros(Int64, p)
@@ -120,13 +120,13 @@ end
 #=
 evaltaylor computes f(T) using Taylor as described in Algorithm 2.6.
 =#
-function evaltaylor(f::Func, T::Matrix{N}, shift::N) where {Func, N<:Number}
+function evaltaylor(f::Func, T::Mat, shift::N)::Mat where {Func, N<:Number, Mat<:Union{Matrix{N}, UpperTriangular{N, Matrix{N}}}}
 	maxiter = 300
 	lookahead = 10
 	tay = f(shift + Taylor1(N, 20+lookahead))
-	M = T - shift*eye(T)
+	M = T - shift*Mat(eye(T))
 	P = M
-	F = tay.coeffs[1]*eye(T)
+	F = tay.coeffs[1]*Mat(eye(T))
 	for k = 1:maxiter
 		needorder = k + lookahead
 		@assert needorder <= tay.order + 1
@@ -153,36 +153,6 @@ function evaltaylor(f::Func, T::Matrix{N}, shift::N) where {Func, N<:Number}
 		end
 	end
 	error("Taylor did not converge.")
-end
-
-#=
-evalhermite
-=#
-function evalhermite(f::Func, T::Matrix{R}, shift::Complex{R}) where {Func, R<:Real}
-	m = 50
-	psi1(t) = f(t)/(t - conj(shift))
-	c = psi1(shift + Taylor1(Complex{R}, m-1)).coeffs
-	M = T - shift*eye(T)
-	P = (T - conj(shift)*eye(T))^m
-	F = c[1]*P
-	P = M*P
-	for j = 1:m-1
-		Term = c[j+1]*P
-		F += Term
-		normP = norm(P, Inf)
-		P = M*P
-		#=
-		small = eps()*norm(F, Inf)
-		if norm(Term, Inf) <= small
-			delta = maximum(abs.(tay.coeffs[k+2:k+1+lookahead]))
-			if delta*max(normP, norm(P, Inf)) <= small
-				return F
-			end
-		end
-		=#
-	end
-	return 2.0*real(F)
-	error("Hermite did not converge.")
 end
 
 function atomicblock(f::Func, T::Matrix{R}, vals::Vector{Complex{R}}) where {Func, R<:Real}
