@@ -155,25 +155,31 @@ function evaltaylor(f::Func, T::Mat, shift::N)::Mat where {Func, N<:Number, Mat<
 	error("Taylor did not converge.")
 end
 
-function atomicblock(f::Func, T::Matrix{R}, vals::Vector{Complex{R}}) where {Func, R<:Real}
-	# handle here case size(T) == 1
-	Fr = Matrix{R}(0, 0)
-	if any(imag.(vals) .== 0) # find a better one?
-		me = mean(real.(vals))
-		Fr = evaltaylor(f, T, me)
-	else
-		me = mean(filter((x) -> imag(x) >= 0, vals))
-		Fc = evalhermite(f, Matrix{Complex{R}}(T), me, conj(me))
-		Fr = real.(Fc)
-		if norm(imag.(Fc), Inf) > 1000*eps()*norm(Fr, Inf)
-			error("T is a real matrix and f(T) has a non-negligible imaginary part.")
-			# you may want to run the complex version of schurparlett.
-		end
+function atomicblock(f::Func, T::Matrix{N}, vals::Vector{C})::Matrix{N} where {Func, N<:Number, C<:Complex}
+	if size(T, 1) == 1
+		return f.(T)
 	end
-	return Fr
-end
-function atomicblock(f::Func, T::Matrix{C}, vals::Vector{C}) where {Func, C<:Complex}
-	return evaltaylor(f, T, mean(vals))
+	if N <: Complex
+		return evaltaylor(f, UpperTriangular(T), mean(vals))
+	end
+	if all(imag(vals) .== 0)
+		return evaltaylor(f, UpperTriangular(T), mean(real(vals)))
+	end
+	if any(abs(imag(vals)) .<= delta/2)
+		return evaltaylor(f, T, mean(real(vals)))
+	end
+	if size(T, 1) == 2
+		#=
+		T has two conjugate eigenvalues with "big" imaginary part.
+		We use the Hermite interpolating polynomial obtained with the
+		Lagrange-Hermite formula, simplified assuming f(conj(x)) == conj(f(x)).
+		=#
+		v1, v2 = vals[1], vals[2]
+		@assert v1 == conj(v2)
+		psi1 = f(v1)/(v1 - v2)
+		return 2.0*real(psi1*(T - [v2 0; 0 v2]))
+	end
+	# complex schur
 end
 
 #=
@@ -184,7 +190,6 @@ recursively. We experimented with various versions of the Parlett recurrence,
 this gave us the best performance.
 =#
 function parlettrec(f::Func, T::Matrix{Num}, vals::Vector{C}, blockend::Vector{Int64}) where {Func, Num<:Number, C<:Complex}
-
 	@assert length(blockend) > 0
 	if length(blockend) == 1
 		return atomicblock(f, T, vals)
