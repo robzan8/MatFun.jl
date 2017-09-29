@@ -3,6 +3,4 @@ schurparlett on almost triangular/diagonal matrices (rounding errors)
 comments
 calculate flops of the 3 parlett recurrence versions (complex and non)
 rewrite tests for real case
-check type-stability of gees!
-evaltaylor for quasi-triangular matrices.
-special path for 2x2 real matrix with complex eigenvalues.
+check type-stability of gees/schur: not type stable :(

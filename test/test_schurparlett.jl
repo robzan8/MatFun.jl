@@ -1,5 +1,5 @@
-using MatFun, TaylorSeries, Base.Test
-
+using MatFun, Base.Test
+#=
 @testset "blockpattern" begin
 	vals = zeros(Complex128, 10)
 	S, p = MatFun.blockpattern(vals, Complex128)
@@ -102,6 +102,43 @@ end
 		relerr = norm(F2-F1)/norm(F1)
 		@test relerr <= tol
 	end
+end
+=#
+@testset "atomicblock" begin
+	srand(911)
+
+	vals = [7.8 + 0im + rand()]
+	T = eye(1)*vals[1]
+	@test LinAlg.expm(T) ≈ MatFun.atomicblock(exp, Matrix{Float64}(T), vals)
+	@test LinAlg.sqrtm(T) ≈ MatFun.atomicblock(sqrt, T, vals)
+
+	vals = [5.0+0im, 5.1, 5.2, 4.9]
+	T = diagm(vals) + im*triu(randn(4, 4), 1)
+	@test LinAlg.expm(T) ≈ MatFun.atomicblock(exp, T, vals)
+	@test LinAlg.sqrtm(T) ≈ MatFun.atomicblock(sqrt, T, vals)
+
+	vals = [5.0, 5.1, 5.2, 4.9]
+	T = diagm(vals) + triu(randn(4, 4), 1)
+	@test LinAlg.expm(T) ≈ MatFun.atomicblock(exp, T, vals.+0im)
+	@test LinAlg.sqrtm(T) ≈ MatFun.atomicblock(sqrt, T, vals.+0im)
+
+	vals = [5.0, 5.1, 5.2, 4.9] .+ im*MatFun.delta*0.4
+	T = diagm(real(vals)) + triu(randn(4, 4), 1)
+	@test LinAlg.expm(T) ≈ MatFun.atomicblock(exp, T, vals)
+	@test LinAlg.sqrtm(T) ≈ MatFun.atomicblock(sqrt, T, vals)
+
+	T = [7.0 4.0+rand(); -2.0+rand() 7.0]
+	U, Z, vals = schur(T)
+	@test vals[1] == conj(vals[2]) && all(abs.(imag(vals)) .> MatFun.delta*0.5)
+	@test LinAlg.expm(T) ≈ MatFun.atomicblock(exp, T, vals)
+	@test LinAlg.sqrtm(T) ≈ MatFun.atomicblock(sqrt, T, vals)
+
+	T2 = T + randn(2, 2)*MatFun.delta*0.1
+	T = [T randn(2, 2); zeros(T) T2]
+	U, Z, vals = schur(T)
+	@test vals[1] == conj(vals[2]) && vals[3] == conj(vals[4]) && all(abs.(imag(vals)) .> MatFun.delta*0.5)
+	@test LinAlg.expm(T) ≈ MatFun.atomicblock(exp, T, vals)
+	@test LinAlg.sqrtm(T) ≈ MatFun.atomicblock(sqrt, T, vals)
 end
 #=
 @testset "schurparlett" begin

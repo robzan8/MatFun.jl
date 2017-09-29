@@ -73,6 +73,18 @@ function blockpattern(vals::Vector{C}, schurtype::Type)::Tuple{Vector{Int64}, In
 	return S, p
 end
 
+# analogous to ordschur/trsen:
+function ordvec!(v::Vector{T}, select::B) where {T, B<:Union{Vector{Bool}, BitVector}}
+	ilst = 1
+	for ifst = 1:length(v)
+		if select[ifst]
+			if ifst != ilst
+				v[ilst], v[ilst+1:ifst] = v[ifst], v[ilst:ifst-1]
+			end
+			ilst += 1
+		end
+	end
+end
 #=
 reorder reorders the Schur decomposition (T, Q, vals) according to pattern S,
 using the swapping strategy described in Algorithm 4.2.
@@ -89,19 +101,6 @@ function reorder!(T::Matrix{N}, Q::Matrix{N}, vals::Vector{C}, S::Vector{Int64},
 		cou[set] += 1
 	end
 	pos ./= cou
-
-	# analogous to ordschur/trsen:
-	function ordvec!(v::Vector{T}, select::Vector{Bool}) where {T}
-		ilst = 1
-		for ifst = 1:length(v)
-			if select[ifst]
-				if ifst != ilst
-					v[ilst], v[ilst+1:ifst] = v[ifst], v[ilst:ifst-1]
-				end
-				ilst += 1
-			end
-		end
-	end
 
 	blockend = zeros(Int64, p)
 	for set = 1:p
@@ -156,19 +155,21 @@ function evaltaylor(f::Func, T::Mat, shift::N)::Mat where {Func, N<:Number, Mat<
 end
 
 function atomicblock(f::Func, T::Matrix{N}, vals::Vector{C})::Matrix{N} where {Func, N<:Number, C<:Complex}
-	if size(T, 1) == 1
+	n = size(T, 1)
+	if n == 1
 		return f.(T)
 	end
 	if N <: Complex
 		return evaltaylor(f, UpperTriangular(T), mean(vals))
 	end
+	# T is real.
 	if all(imag(vals) .== 0)
 		return evaltaylor(f, UpperTriangular(T), mean(real(vals)))
 	end
-	if any(abs(imag(vals)) .<= delta/2)
+	if any(abs.(imag(vals)) .<= delta/2)
 		return evaltaylor(f, T, mean(real(vals)))
 	end
-	if size(T, 1) == 2
+	if n == 2
 		#=
 		T has two conjugate eigenvalues with "big" imaginary part.
 		We use the Hermite interpolating polynomial obtained with the
@@ -180,6 +181,17 @@ function atomicblock(f::Func, T::Matrix{N}, vals::Vector{C})::Matrix{N} where {F
 		return 2.0*real(psi1*(T - [v2 0; 0 v2]))
 	end
 	# complex schur
+	U, Z, vals = schur(Matrix{C}(T))::Tuple{Matrix{C}, Matrix{C}, Vector{C}}
+	select = imag(vals) .> 0
+	ordschur!(U, Z, select)
+	ordvec!(vals, select)
+	@assert count(select) == n÷2
+	F = Z*parlettrec(f, U, vals, [n÷2, n])*Z'
+	Fr = real(F)
+	if !(Fr ≈ F)
+		error("should be real")
+	end
+	return Fr
 end
 
 #=
@@ -189,7 +201,7 @@ The paper suggests to do the recurrence iteratively (Algorithm 5.1), we do it
 recursively. We experimented with various versions of the Parlett recurrence,
 this gave us the best performance.
 =#
-function parlettrec(f::Func, T::Matrix{Num}, vals::Vector{C}, blockend::Vector{Int64}) where {Func, Num<:Number, C<:Complex}
+function parlettrec(f::Func, T::Matrix{N}, vals::Vector{C}, blockend::Vector{Int64})::Matrix{N} where {Func, N<:Number, C<:Complex}
 	@assert length(blockend) > 0
 	if length(blockend) == 1
 		return atomicblock(f, T, vals)
@@ -202,8 +214,8 @@ function parlettrec(f::Func, T::Matrix{Num}, vals::Vector{C}, blockend::Vector{I
 	T11, T12 = T[1:bend, 1:bend], view(T, 1:bend, bend+1:n)
 	T21, T22 = view(T, bend+1:n, 1:bend), T[bend+1:n, bend+1:n]
 
-	F11 = parlettrec(f, T11, blockend[1:b])
-	F22 = parlettrec(f, T22, blockend[b+1:end] .- bend) # vals!!!!!
+	F11 = parlettrec(f, T11, vals[1:bend], blockend[1:b])
+	F22 = parlettrec(f, T22, vals[bend+1:n], blockend[b+1:end] .- bend)
 	
 	# T11*F12 - F12*T22 = F11*T12 - T12*F22
 	F12, scale = LAPACK.trsyl!('N', 'N', T11, T22, F11*T12 - T12*F22, -1)
