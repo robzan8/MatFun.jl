@@ -1,6 +1,4 @@
 profiling
 schurparlett on almost triangular/diagonal matrices (rounding errors)
-comments
+comments - api - float types
 calculate flops of the 3 parlett recurrence versions (complex and non)
-rewrite tests for real case
-check type-stability of gees/schur: not type stable :(

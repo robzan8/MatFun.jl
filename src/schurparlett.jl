@@ -2,8 +2,6 @@
 This file implements the algorithm described in:
 "A Schur-Parlett Algorithm for Computing Matrix Functions"
 (Davies and Higham, 2003)
-One major modification was made to the algorithm:
-it works in real arithmetic for real matrices.
 =#
 
 #=
@@ -223,24 +221,21 @@ function parlettrec(f::Func, T::Matrix{N}, vals::Vector{C}, blockend::Vector{Int
 	return [F11 F12/scale; zeros(T21) F22]
 end
 
-function schurparlett(f::Func, A::Matrix{C}) where {Func, C<:Complex}
-	if istriu(A)
-		return schurparlett(f, A, eye(A))
-	end
-
-	T, Q, vals = gees!(A)
-	return schurparlett(f, T, Q)
+function schur_stable(A::Matrix{R})::Tuple{Matrix{R}, Matrix{R}, Vector{Complex{R}}} where {R<:Real}
+	return schur(A)
+end
+function schur_stable(A::Matrix{C})::Tuple{Matrix{C}, Matrix{C}, Vector{C}} where {C<:Complex}
+	return schur(A)
 end
 
-function schurparlett(f::Func, T::Matrix{Comp}, Q::Matrix{Comp}) where {Func, Comp<:Complex}
-	if isdiag(T)
-		return Q*diagm(f.(diag(T)))*Q'
+function schurparlett(f::Func, A::Matrix{N}) where {Func, N<:Number}
+	T, Q, vals = schur_stable(A)
+	d = diag(T)
+	if T ≈ diagm(d)
+		return Q*diagm(f.(d))*Q'
 	end
 
-	vals = diag(T)
-	S, p = blockpattern(vals, 0.1)
-	T, Q = copy(T), copy(Q)
-	blocksize = reorder!(T, Q, S, p)
-	F = parlettrec(f, T, cumsum(blocksize))
-	return Q*F*Q'
+	S, p = blockpattern(vals, N)
+	blockend = reorder!(T, Q, vals, S, p)
+	return Q*parlettrec(f, T, vals, blockend)*Q'
 end

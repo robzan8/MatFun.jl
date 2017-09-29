@@ -1,5 +1,5 @@
 using MatFun, Base.Test
-#=
+
 @testset "blockpattern" begin
 	vals = zeros(Complex128, 10)
 	S, p = MatFun.blockpattern(vals, Complex128)
@@ -93,17 +93,9 @@ end
 			MatFun.evaltaylor(sqrt, Matrix{Float64}(T), Float64(shift))
 		relerr = norm(F2-F1)/norm(F1)
 		@test relerr <= tol
-
-		pow = (x) -> x^Float64(pi)
-		F1 = pow(T)
-		F2 = (t == 1)?
-			MatFun.evaltaylor(pow, UpperTriangular(T), shift):
-			MatFun.evaltaylor(pow, Matrix{Float64}(T), Float64(shift))
-		relerr = norm(F2-F1)/norm(F1)
-		@test relerr <= tol
 	end
 end
-=#
+
 @testset "atomicblock" begin
 	srand(911)
 
@@ -140,23 +132,19 @@ end
 	@test LinAlg.expm(T) ≈ MatFun.atomicblock(exp, T, vals)
 	@test LinAlg.sqrtm(T) ≈ MatFun.atomicblock(sqrt, T, vals)
 end
-#=
+
 @testset "schurparlett" begin
 	for t = 1:3
 		n = 10
 		tol = 100*eps()
 		srand(666*t)
-		A = Matrix{Complex128}(0, 0)
+		A::Union{Matrix{Float64}, Matrix{Complex128}} = Matrix{Float64}(0, 0)
 		if t == 1
-			A = 5*eye(n) + randn(n, n) + im*randn(n, n)
+			A = diagm(randn(n) .+ 5)
 		elseif t == 2
-			A = Matrix{Complex128}(diagm(randn(n) .+ 5))
+			A = 5*eye(n) + randn(n, n)/30 + im*randn(n, n)/30
 		else
-			vals = [4.0, 4, 4, 5, 5, 5, 7, 7, 7, 7]
-			for i = 1:length(vals)
-				vals[i] += rand()*0.1
-			end
-			A = Matrix{Complex128}(diagm(vals) + triu(randn(n, n), 1))
+			A = 5*eye(n) + randn(n, n)/15
 		end
 		@test cond(A) <= 1000
 
@@ -174,12 +162,5 @@ end
 		F2 = schurparlett(sqrt, A)
 		relerr = norm(F2-F1)/norm(F1)
 		@test relerr <= tol
-
-		pow = (x) -> x^Float64(pi)
-		F1 = pow(A)
-		F2 = schurparlett(pow, A)
-		relerr = norm(F2-F1)/norm(F1)
-		@test relerr <= tol
 	end
 end
-=#
