@@ -2,6 +2,7 @@
 This file implements the algorithm described in:
 "A Schur-Parlett Algorithm for Computing Matrix Functions"
 (Davies and Higham, 2003)
+(with some modifications to handle real matrices more efficiently).
 =#
 
 #=
@@ -83,13 +84,16 @@ function ordvec!(v::Vector{T}, select::B) where {T, B<:Union{Vector{Bool}, BitVe
 		end
 	end
 end
+
 #=
 reorder reorders the Schur decomposition (T, Q, vals) according to pattern S,
 using the swapping strategy described in Algorithm 4.2.
 The returned vector, blockend, contains the indices at which each block ends
 (after the reordering).
 =#
-function reorder!(T::Matrix{N}, Q::Matrix{N}, vals::Vector{C}, S::Vector{Int64}, p::Int64)::Vector{Int64} where {N<:Number, C<:Complex}
+function reorder!(T::Matrix{N}, Q::Matrix{N}, vals::Vector{C}, S::Vector{Int64}, p::Int64)::Vector{Int64} where {
+	N<:Number, C<:Complex}
+
 	# for each set, calculate its mean position in S:
 	pos = zeros(Float64, p)
 	cou = zeros(Int64, p)
@@ -115,9 +119,11 @@ function reorder!(T::Matrix{N}, Q::Matrix{N}, vals::Vector{C}, S::Vector{Int64},
 end
 
 #=
-evaltaylor computes f(T) using Taylor as described in Algorithm 2.6.
+taylorf computes f(T) using Taylor as described in Algorithm 2.6.
 =#
-function evaltaylor(f::Func, T::Mat, shift::N)::Mat where {Func, N<:Number, Mat<:Union{Matrix{N}, UpperTriangular{N, Matrix{N}}}}
+function taylorf(f::Func, T::Mat, shift::N)::Mat where {
+	Func, N<:Number, Mat<:Union{Matrix{N}, UpperTriangular{N, Matrix{N}}}}
+
 	maxiter = 300
 	lookahead = 10
 	tay = f(shift + Taylor1(N, 20+lookahead))
@@ -152,24 +158,30 @@ function evaltaylor(f::Func, T::Mat, shift::N)::Mat where {Func, N<:Number, Mat<
 	error("Taylor did not converge.")
 end
 
-function atomicblock(f::Func, T::Matrix{N}, vals::Vector{C})::Matrix{N} where {Func, N<:Number, C<:Complex}
+#=
+blockf computes f(T) where T is an "atomic" block.
+=#
+function blockf(f::Func, T::Matrix{N}, vals::Vector{C})::Matrix{N} where {Func, N<:Number, C<:Complex}
 	n = size(T, 1)
 	if n == 1
 		return f.(T)
 	end
 	if N <: Complex
-		return evaltaylor(f, UpperTriangular(T), mean(vals))
+		# T is complex and triangular with one cluster of eigenvalues.
+		return taylorf(f, UpperTriangular(T), mean(vals))
 	end
-	# T is real.
 	if all(imag(vals) .== 0)
-		return evaltaylor(f, UpperTriangular(T), mean(real(vals)))
+		# T is real and triangular with one cluster of real eigenvalues.
+		return taylorf(f, UpperTriangular(T), mean(real(vals)))
 	end
 	if any(abs.(imag(vals)) .<= delta/2)
-		return evaltaylor(f, T, mean(real(vals)))
+		# T is real and quasi-triangular with one cluster of complex
+		# conjugated eigenvalues (and possibly some real eigenvalue).
+		return taylorf(f, T, mean(real(vals)))
 	end
 	if n == 2
 		#=
-		T has two conjugate eigenvalues with "big" imaginary part.
+		T is real and 2x2 with two well-separated conjugate eigenvalues.
 		We use the Hermite interpolating polynomial obtained with the
 		Lagrange-Hermite formula, simplified assuming f(conj(x)) == conj(f(x)).
 		=#
@@ -178,31 +190,38 @@ function atomicblock(f::Func, T::Matrix{N}, vals::Vector{C})::Matrix{N} where {F
 		psi1 = f(v1)/(v1 - v2)
 		return 2.0*real(psi1*(T - [v2 0; 0 v2]))
 	end
-	# complex schur
+	#=
+	T is real with two well-separated, complex conjugate clusters of eigenvalues.
+	We use the complex Schur factorization to further divide T.
+	Doing complex Schur at the block level is more efficient than using complex
+	arithmetic for the whole matrix.
+	=#
 	U, Z, vals = schur(Matrix{C}(T))::Tuple{Matrix{C}, Matrix{C}, Vector{C}}
 	select = imag(vals) .> 0
 	ordschur!(U, Z, select)
 	ordvec!(vals, select)
 	@assert count(select) == n÷2
-	F = Z*parlettrec(f, U, vals, [n÷2, n])*Z'
-	Fr = real(F)
-	if !(Fr ≈ F)
-		error("should be real")
+	F = Z*recf(f, U, vals, [n÷2, n])*Z'
+	realF = real(F)
+	if norm(imag(F), Inf) > sqrt(eps())*norm(realF, Inf)
+		error("T is real but f(T) has non-negligible imaginary part.")
+		# note: we need f(T) to be real, because trsyl can't handle
+		# quasi-triangular complex matrices.
 	end
-	return Fr
+	return realF
 end
 
 #=
-parlettrec computes and returns f(T) using the Parlett recurrence.
-T is block-triangular and blockend contains the indices at which each block ends.
-The paper suggests to do the recurrence iteratively (Algorithm 5.1), we do it
-recursively. We experimented with various versions of the Parlett recurrence,
-this gave us the best performance.
+recf computes f(T) using the Parlett recurrence (T is block-triangular).
+The paper suggests to do the recurrence iteratively (Algorithm 5.1),
+we do it recursively as this version performs better.
 =#
-function parlettrec(f::Func, T::Matrix{N}, vals::Vector{C}, blockend::Vector{Int64})::Matrix{N} where {Func, N<:Number, C<:Complex}
+function recf(f::Func, T::Matrix{N}, vals::Vector{C}, blockend::Vector{Int64})::Matrix{N} where {
+	Func, N<:Number, C<:Complex}
+
 	@assert length(blockend) > 0
 	if length(blockend) == 1
-		return atomicblock(f, T, vals)
+		return blockf(f, T, vals)
 	end
 
 	# split T in 2x2 superblocks of size ~n/2:
@@ -212,8 +231,8 @@ function parlettrec(f::Func, T::Matrix{N}, vals::Vector{C}, blockend::Vector{Int
 	T11, T12 = T[1:bend, 1:bend], view(T, 1:bend, bend+1:n)
 	T21, T22 = view(T, bend+1:n, 1:bend), T[bend+1:n, bend+1:n]
 
-	F11 = parlettrec(f, T11, vals[1:bend], blockend[1:b])
-	F22 = parlettrec(f, T22, vals[bend+1:n], blockend[b+1:end] .- bend)
+	F11 = recf(f, T11, vals[1:bend], blockend[1:b])
+	F22 = recf(f, T22, vals[bend+1:n], blockend[b+1:end] .- bend)
 	
 	# T11*F12 - F12*T22 = F11*T12 - T12*F22
 	F12, scale = LAPACK.trsyl!('N', 'N', T11, T22, F11*T12 - T12*F22, -1)
@@ -221,6 +240,7 @@ function parlettrec(f::Func, T::Matrix{N}, vals::Vector{C}, blockend::Vector{Int
 	return [F11 F12/scale; zeros(T21) F22]
 end
 
+# schur is not type-stable, it may return the eigenvalues as Vector{Real}.
 function schur_stable(A::Matrix{R})::Tuple{Matrix{R}, Matrix{R}, Vector{Complex{R}}} where {R<:Real}
 	return schur(A)
 end
@@ -228,14 +248,22 @@ function schur_stable(A::Matrix{C})::Tuple{Matrix{C}, Matrix{C}, Vector{C}} wher
 	return schur(A)
 end
 
-function schurparlett(f::Func, A::Matrix{N}) where {Func, N<:Number}
+"""
+	schurparlett(f, A)
+
+Computes f(A) using the Schur-Parlett algorithm.
+When A is a real matrix, computation will be done mostly in real arithmetic
+and the algorithm will assume f(conj(x)) == conj(f(x)).
+"""
+function schurparlett(f::Func, A::Matrix{N}) where {Func, N<:Union{Float32, Float64, Complex64, Complex128}}
 	T, Q, vals = schur_stable(A)
 	d = diag(T)
-	if T ≈ diagm(d)
+	D = diagm(d)
+	if norm(T-D, Inf) <= 1000*eps()*norm(D, Inf)
 		return Q*diagm(f.(d))*Q'
 	end
 
 	S, p = blockpattern(vals, N)
 	blockend = reorder!(T, Q, vals, S, p)
-	return Q*parlettrec(f, T, vals, blockend)*Q'
+	return Q*recf(f, T, vals, blockend)*Q'
 end

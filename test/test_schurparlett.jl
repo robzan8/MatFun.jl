@@ -58,7 +58,7 @@ end
 	@test Q*T*Q' ≈ A
 end
 
-@testset "evaltaylor" begin
+@testset "taylorf" begin
 	for t = 1:2
 		n = 10
 		tol = 100*eps()
@@ -75,62 +75,62 @@ end
 
 		F1 = LinAlg.expm(T)
 		F2 = (t == 1)?
-			MatFun.evaltaylor(exp, UpperTriangular(T), shift):
-			MatFun.evaltaylor(exp, Matrix{Float64}(T), Float64(shift))
+			MatFun.taylorf(exp, UpperTriangular(T), shift):
+			MatFun.taylorf(exp, Matrix{Float64}(T), Float64(shift))
 		relerr = norm(F2-F1)/norm(F1)
 		@test relerr <= tol
 
 		F1 = LinAlg.logm(T)
 		F2 = (t == 1)?
-			MatFun.evaltaylor(log, UpperTriangular(T), shift):
-			MatFun.evaltaylor(log, Matrix{Float64}(T), Float64(shift))
+			MatFun.taylorf(log, UpperTriangular(T), shift):
+			MatFun.taylorf(log, Matrix{Float64}(T), Float64(shift))
 		relerr = norm(F2-F1)/norm(F1)
 		@test relerr <= tol
 
 		F1 = LinAlg.sqrtm(T)
 		F2 = (t == 1)?
-			MatFun.evaltaylor(sqrt, UpperTriangular(T), shift):
-			MatFun.evaltaylor(sqrt, Matrix{Float64}(T), Float64(shift))
+			MatFun.taylorf(sqrt, UpperTriangular(T), shift):
+			MatFun.taylorf(sqrt, Matrix{Float64}(T), Float64(shift))
 		relerr = norm(F2-F1)/norm(F1)
 		@test relerr <= tol
 	end
 end
 
-@testset "atomicblock" begin
+@testset "blockf" begin
 	srand(911)
 
 	vals = [7.8 + 0im + rand()]
 	T = eye(1)*vals[1]
-	@test LinAlg.expm(T) ≈ MatFun.atomicblock(exp, Matrix{Float64}(T), vals)
-	@test LinAlg.sqrtm(T) ≈ MatFun.atomicblock(sqrt, T, vals)
+	@test LinAlg.expm(T) ≈ MatFun.blockf(exp, Matrix{Float64}(T), vals)
+	@test LinAlg.sqrtm(T) ≈ MatFun.blockf(sqrt, T, vals)
 
 	vals = [5.0+0im, 5.1, 5.2, 4.9]
 	T = diagm(vals) + im*triu(randn(4, 4), 1)
-	@test LinAlg.expm(T) ≈ MatFun.atomicblock(exp, T, vals)
-	@test LinAlg.sqrtm(T) ≈ MatFun.atomicblock(sqrt, T, vals)
+	@test LinAlg.expm(T) ≈ MatFun.blockf(exp, T, vals)
+	@test LinAlg.sqrtm(T) ≈ MatFun.blockf(sqrt, T, vals)
 
 	vals = [5.0, 5.1, 5.2, 4.9]
 	T = diagm(vals) + triu(randn(4, 4), 1)
-	@test LinAlg.expm(T) ≈ MatFun.atomicblock(exp, T, vals.+0im)
-	@test LinAlg.sqrtm(T) ≈ MatFun.atomicblock(sqrt, T, vals.+0im)
+	@test LinAlg.expm(T) ≈ MatFun.blockf(exp, T, vals.+0im)
+	@test LinAlg.sqrtm(T) ≈ MatFun.blockf(sqrt, T, vals.+0im)
 
 	vals = [5.0, 5.1, 5.2, 4.9] .+ im*MatFun.delta*0.4
 	T = diagm(real(vals)) + triu(randn(4, 4), 1)
-	@test LinAlg.expm(T) ≈ MatFun.atomicblock(exp, T, vals)
-	@test LinAlg.sqrtm(T) ≈ MatFun.atomicblock(sqrt, T, vals)
+	@test LinAlg.expm(T) ≈ MatFun.blockf(exp, T, vals)
+	@test LinAlg.sqrtm(T) ≈ MatFun.blockf(sqrt, T, vals)
 
 	T = [7.0 4.0+rand(); -2.0+rand() 7.0]
 	U, Z, vals = schur(T)
 	@test vals[1] == conj(vals[2]) && all(abs.(imag(vals)) .> MatFun.delta*0.5)
-	@test LinAlg.expm(T) ≈ MatFun.atomicblock(exp, T, vals)
-	@test LinAlg.sqrtm(T) ≈ MatFun.atomicblock(sqrt, T, vals)
+	@test LinAlg.expm(T) ≈ MatFun.blockf(exp, T, vals)
+	@test LinAlg.sqrtm(T) ≈ MatFun.blockf(sqrt, T, vals)
 
 	T2 = T + randn(2, 2)*MatFun.delta*0.1
 	T = [T randn(2, 2); zeros(T) T2]
 	U, Z, vals = schur(T)
 	@test vals[1] == conj(vals[2]) && vals[3] == conj(vals[4]) && all(abs.(imag(vals)) .> MatFun.delta*0.5)
-	@test LinAlg.expm(T) ≈ MatFun.atomicblock(exp, T, vals)
-	@test LinAlg.sqrtm(T) ≈ MatFun.atomicblock(sqrt, T, vals)
+	@test LinAlg.expm(T) ≈ MatFun.blockf(exp, T, vals)
+	@test LinAlg.sqrtm(T) ≈ MatFun.blockf(sqrt, T, vals)
 end
 
 @testset "schurparlett" begin
