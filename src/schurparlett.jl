@@ -176,12 +176,12 @@ function blockf(f::Func, T::Matrix{N}, vals::Vector{C})::Matrix{N} where {Func, 
 	end
 	if any(abs.(imag(vals)) .<= delta/2)
 		# T is real and quasi-triangular with one cluster of complex
-		# conjugated eigenvalues (and possibly some real eigenvalue).
+		# conjugate eigenvalues (and possibly some real eigenvalue).
 		return taylorf(f, T, mean(real(vals)))
 	end
 	if n == 2
 		#=
-		T is real and 2x2 with two well-separated conjugate eigenvalues.
+		T is real and 2x2 with two well-separated complex conjugate eigenvalues.
 		We use the Hermite interpolating polynomial obtained with the
 		Lagrange-Hermite formula, simplified assuming f(conj(x)) == conj(f(x)).
 		=#
