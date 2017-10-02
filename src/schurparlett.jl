@@ -255,7 +255,7 @@ Computes f(A) using the Schur-Parlett algorithm.
 When A is a real matrix, computation will be done mostly in real arithmetic
 and the algorithm will assume f(conj(x)) == conj(f(x)).
 """
-function schurparlett(f::Func, A::Matrix{N}) where {Func, N<:Union{Float32, Float64, Complex64, Complex128}}
+function schurparlett(f::Func, A::Matrix{N})::Matrix{N} where {Func, N<:Union{Float32, Float64, Complex64, Complex128}}
 	T, Q, vals = schur_stable(A)
 	d = diag(T)
 	D = diagm(d)
