@@ -240,14 +240,6 @@ function recf(f::Func, T::Matrix{N}, vals::Vector{C}, blockend::Vector{Int64})::
 	return [F11 F12/scale; zeros(T21) F22]
 end
 
-# schur is not type-stable, it may return the eigenvalues as Vector{Real}.
-function schur_stable(A::Matrix{R})::Tuple{Matrix{R}, Matrix{R}, Vector{Complex{R}}} where {R<:Real}
-	return schur(A)
-end
-function schur_stable(A::Matrix{C})::Tuple{Matrix{C}, Matrix{C}, Vector{C}} where {C<:Complex}
-	return schur(A)
-end
-
 """
 	schurparlett(f, A)
 
@@ -255,8 +247,14 @@ Computes f(A) using the Schur-Parlett algorithm.
 When A is a real matrix, computation will be done mostly in real arithmetic
 and the algorithm will assume f(conj(x)) == conj(f(x)).
 """
-function schurparlett(f::Func, A::Matrix{N})::Matrix{N} where {Func, N<:Union{Float32, Float64, Complex64, Complex128}}
-	T, Q, vals = schur_stable(A)
+function schurparlett(f::Func, T::Matrix{R}, Q::Matrix{R}, vals::Vector{R})::Matrix{R} where {
+	Func, R<:Union{Float32, Float64}}
+
+	return schurparlett(f, T, Q, Vector{Complex{R}}(vals))
+end
+function schurparlett(f::Func, T::Matrix{N}, Q::Matrix{N}, vals::Vector{C})::Matrix{N} where {
+	Func, N<:Union{Float32, Float64, Complex64, Complex128}, C<:Union{Complex64, Complex128}}
+
 	d = diag(T)
 	D = diagm(d)
 	if norm(T-D, Inf) <= 1000*eps()*norm(D, Inf)
@@ -266,4 +264,18 @@ function schurparlett(f::Func, A::Matrix{N})::Matrix{N} where {Func, N<:Union{Fl
 	S, p = blockpattern(vals, N)
 	blockend = reorder!(T, Q, vals, S, p)
 	return Q*recf(f, T, vals, blockend)*Q'
+end
+
+"""
+	schurparlett(f, A)
+
+Computes f(A) using the Schur-Parlett algorithm.
+When A is a real matrix, computation will be done mostly in real arithmetic
+and the algorithm will assume f(conj(x)) == conj(f(x)).
+"""
+function schurparlett(f::Func, A::Matrix{N})::Matrix{N} where {
+	Func, N<:Union{Float32, Float64, Complex64, Complex128}}
+
+	T, Q, vals = schur(A)
+	return schurparlett(f, T, Q, vals)
 end
