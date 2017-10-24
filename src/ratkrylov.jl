@@ -8,7 +8,7 @@ function canonical_cplx(p::Vector{C})::Bool where {C<:Complex}
 		if isreal(p[j]) || isinf(p[j])
 			j = j+1
 		else
-			if j == m || (j < m && p[j+1] != conj(p[j]))
+			if j == m || p[j+1] != conj(p[j])
 				return false
 			end
 			j = j+2
@@ -37,11 +37,11 @@ function poles_to_moebius!(p::Vector{Complex{R}})::Tuple{Vector{R}, Vector{R}, V
 	return mu, rho, eta
 end
 
-function ratkrylov(A, b, p)
-	B = speye(A)
+function ratkrylov(A::Matrix{N}, b::Vector{N}, p::Vector{C}) where {N, C}
+	B = eye(A) # speye(A)
 	m = length(p)
-	V = zeros(T, length(b), m+1)
-	K = zeros(T, m+1, m)
+	V = zeros(N, length(b), m+1)
+	K = zeros(N, m+1, m)
 	H = zeros(K)
 	U = zeros(K)
 
@@ -84,17 +84,18 @@ function ratkrylov(A, b, p)
 					H[reo_i, j] += hh
 				end
 			end
-			H[j+1, j] = norm(w)
-			V[:, j+1] = w/H[j+1, j]
-
-			if abs(H[j+1, j]) < bd_tol*norm(H[1:j, j])
+			normw = norm(w)
+			H[j+1, j] = normw
+			V[:, j+1] = w/normw
+			if normw < bd_tol*norm(H[1:j, j])
 				bd = true
 				break
 			end
 
 			% Setting the decomposition.
-			K[1:j+1, j] = rho[j]*[U[1:j, j]; 0] + H[1:j+1, j]/p[j]
-			H[1:j+1, j] = eta[j]*[U[1:j, j]; 0] + H[1:j+1, j]/mu[j]
+			u, h = [U[1:j, j]; 0], H[1:j+1, j]
+			K[1:j+1, j] = rho[j]*u + h/p[j]
+			H[1:j+1, j] = eta[j]*u + h/mu[j]
 		else
 			V[:, j+1] = real[w]
 			V[:, j+2] = imag[w]
@@ -109,9 +110,10 @@ function ratkrylov(A, b, p)
 						H[reo_i, j] += hh
 					end
 				end
-				H[j+1, j] = norm(V[:, j+1])
-				V[:, j+1] /= H[j+1, j]
-				if abs(H[j+1, j]) < bd_tol*norm(H[1:j, j])
+				normw = norm(V[:, j+1])
+				H[j+1, j] = normw
+				V[:, j+1] /= normw
+				if normw < bd_tol*norm(H[1:j, j])
 					bd = true
 					break
 				end
@@ -120,10 +122,10 @@ function ratkrylov(A, b, p)
 			% Setting the decomposition.
 			rp, ip = real(1/p[j-1]), imag(1/p[j-1])
 			cp = [rp ip; -ip rp]
-
-			rcnt = [real(U[1:j-1, j-1]) imag(U[1:j-1, j-1]); 0 0; 0 0]
-			K[1:j+1, j-1:j] = H[1:j+1, j-1:j]*cp + rho[j-1]*rcnt
-			H[1:j+1, j-1:j] = H[1:j+1, j-1:j]/mu[j-1] + eta[j-1]*rcnt
+			u, h = U[1:j-1, j-1], H[1:j+1, j-1:j]
+			rcnt = [real(u) imag(u); 0 0; 0 0]
+			K[1:j+1, j-1:j] = h*cp + rho[j-1]*rcnt
+			H[1:j+1, j-1:j] = h/mu[j-1] + eta[j-1]*rcnt
 		end # realopt
 
 		j = j+1
