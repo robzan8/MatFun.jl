@@ -37,17 +37,18 @@ function poles_to_moebius!(p::Vector{Complex{R}})::Tuple{Vector{R}, Vector{R}, V
 	return mu, rho, eta
 end
 
-function ratkrylov(A::Matrix{N}, b::Vector{N}, p::Vector{C}) where {N, C}
+function ratkrylov(A::Matrix{N}, b::Vector{N}, p::Vector{C}) where {N<:Number, C<:Complex}
 	B = eye(A) # speye(A)
-	m = length(p)
-	V = zeros(N, length(b), m+1)
+	m, n = length(p), length(b)
+	V = zeros(N, n, m+1)
 	K = zeros(N, m+1, m)
 	H = zeros(K)
 	U = zeros(K)
+	realopt = N <: Real
 
 	# Cannot use real arithmetic if the poles are not ordered canonically.
 	if realopt && !canonical_cplx(p)
-		realopt = 0
+		realopt = false
 		println("can't use real arithmetic")
 	end
 
@@ -62,20 +63,20 @@ function ratkrylov(A::Matrix{N}, b::Vector{N}, p::Vector{C}) where {N, C}
 	while j <= m
 		# Computing the continuation combination.
 		if j == 1
-			U(1, 1) = 1
+			U[1, 1] = 1
 		else
-			Q = qr(K[1:j, 1:j-1]/mu[j] - H[1:j, 1:j-1]/p[j])[1]
+			Q = qr(K[1:j, 1:j-1]/mu[j] - H[1:j, 1:j-1]/p[j], thin=false)[1]
 			U[1:j, j] = Q[:, end]
 		end
 
-		% Compute new vector.
+		# Compute new vector.
 		w = V[:, 1:j]*U[1:j, j]
-		w = rho[j]*(A*w) - eta[j]*(B*w)
+		w = rho[j]*(A*w) - eta[j]*w
 		w = (B/mu[j] - A/p[j]) \ w
 
-		% Orthogonalization.
-		if isreal(p[j]/mu[j]) || realopt == 0
-			% MGS
+		# Orthogonalization.
+		if isreal(p[j]/mu[j]) || !realopt
+			# MGS
 			for reo = 0:1
 				for reo_i = 1:j
 					v = V[:, reo_i]
@@ -92,15 +93,15 @@ function ratkrylov(A::Matrix{N}, b::Vector{N}, p::Vector{C}) where {N, C}
 				break
 			end
 
-			% Setting the decomposition.
+			# Setting the decomposition.
 			u, h = [U[1:j, j]; 0], H[1:j+1, j]
 			K[1:j+1, j] = rho[j]*u + h/p[j]
 			H[1:j+1, j] = eta[j]*u + h/mu[j]
 		else
-			V[:, j+1] = real[w]
-			V[:, j+2] = imag[w]
+			V[:, j+1] = real(w)
+			V[:, j+2] = imag(w)
 
-			% MGS
+			# MGS
 			for j = j:j+1
 				for reo = 0:1
 					for reo_i = 1:j
@@ -119,7 +120,7 @@ function ratkrylov(A::Matrix{N}, b::Vector{N}, p::Vector{C}) where {N, C}
 				end
 			end
 
-			% Setting the decomposition.
+			# Setting the decomposition.
 			rp, ip = real(1/p[j-1]), imag(1/p[j-1])
 			cp = [rp ip; -ip rp]
 			u, h = U[1:j-1, j-1], H[1:j+1, j-1:j]
