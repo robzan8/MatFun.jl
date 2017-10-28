@@ -1,3 +1,4 @@
+schurparlett:
 profiling
 input validation
 calculate flops of the 3 parlett recurrence versions (complex and non)
@@ -5,3 +6,17 @@ blocchi jordan benchmark
 f(x) = x^40
 document schurparlett(T, Q)
 Taylor termination
+
+krylov:
+sparse linear solver
+type issues all over the place
+when to use realopt
+
+real A with canonically ordered p:
+U is complex
+w is complex
+if realopt
+	V, K, H real
+else
+	K, H stay real when setting the decomposition?
+end

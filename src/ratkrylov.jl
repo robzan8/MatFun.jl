@@ -38,12 +38,11 @@ function poles_to_moebius!(p::Vector{Complex{R}})::Tuple{Vector{R}, Vector{R}, V
 end
 
 function ratkrylov(A::Matrix{N}, b::Vector{N}, p::Vector{C}) where {N<:Number, C<:Complex}
-	B = eye(A) # speye(A)
+	B = eye(A)
 	m, n = length(p), length(b)
 	V = zeros(N, n, m+1)
 	K = zeros(N, m+1, m)
 	H = zeros(K)
-	U = zeros(K)
 	realopt = N <: Real
 
 	# Cannot use real arithmetic if the poles are not ordered canonically.
@@ -75,29 +74,8 @@ function ratkrylov(A::Matrix{N}, b::Vector{N}, p::Vector{C}) where {N<:Number, C
 		w = (B/mu[j] - A/p[j]) \ w
 
 		# Orthogonalization.
-		if isreal(p[j]/mu[j]) || !realopt
-			# MGS
-			for reo = 0:1
-				for reo_i = 1:j
-					v = V[:, reo_i]
-					hh = w'*v
-					w -= v*hh
-					H[reo_i, j] += hh
-				end
-			end
-			normw = norm(w)
-			H[j+1, j] = normw
-			V[:, j+1] = w/normw
-			if normw < bd_tol*norm(H[1:j, j])
-				bd = true
-				break
-			end
-
-			# Setting the decomposition.
-			u, h = [U[1:j, j]; 0], H[1:j+1, j]
-			K[1:j+1, j] = rho[j]*u + h/p[j]
-			H[1:j+1, j] = eta[j]*u + h/mu[j]
-		else
+		if realopt && !isreal(p[j])
+			println("yay")
 			V[:, j+1] = real(w)
 			V[:, j+2] = imag(w)
 
@@ -127,6 +105,30 @@ function ratkrylov(A::Matrix{N}, b::Vector{N}, p::Vector{C}) where {N<:Number, C
 			rcnt = [real(u) imag(u); 0 0; 0 0]
 			K[1:j+1, j-1:j] = h*cp + rho[j-1]*rcnt
 			H[1:j+1, j-1:j] = h/mu[j-1] + eta[j-1]*rcnt
+		else
+			#w = (B/mu[j] - A/N(p[j])) \ w
+			# MGS
+			for reo = 0:1
+				for reo_i = 1:j
+					v = V[:, reo_i]
+					hh = w'*v
+					w -= v*hh
+					H[reo_i, j] += hh
+				end
+			end
+			normw = norm(w)
+			H[j+1, j] = normw
+			V[:, j+1] = w/normw
+			if normw < bd_tol*norm(H[1:j, j])
+				bd = true
+				break
+			end
+
+			# Setting the decomposition.
+			u, h = [U[1:j, j]; 0], H[1:j+1, j]
+			println(u)
+			K[1:j+1, j] = rho[j]*u + h/p[j]
+			H[1:j+1, j] = eta[j]*u + h/mu[j]
 		end # realopt
 
 		j = j+1
