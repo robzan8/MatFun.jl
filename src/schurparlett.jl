@@ -252,8 +252,8 @@ function schurparlett(f::Func, T::Matrix{R}, Q::Matrix{R}, vals::Vector{R})::Mat
 
 	return schurparlett(f, T, Q, Vector{Complex{R}}(vals))
 end
-function schurparlett(f::Func, T::Matrix{N}, Q::Matrix{N}, vals::Vector{C})::Matrix{N} where {
-	Func, N<:Union{Float32, Float64, Complex64, Complex128}, C<:Union{Complex64, Complex128}}
+function schurparlett(f::Func, T::Matrix{N}, Q::Matrix{N}, vals::Vector{Complex{R}})::Matrix{N} where {
+	Func, R<:Union{Float32, Float64}, N<:Union{R, Complex{R}}}
 
 	d = diag(T)
 	D = diagm(d)

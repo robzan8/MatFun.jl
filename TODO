@@ -9,14 +9,5 @@ Taylor termination
 
 krylov:
 sparse linear solver
-type issues all over the place
-when to use realopt
-
-real A with canonically ordered p:
-U is complex
-w is complex
-if realopt
-	V, K, H real
-else
-	K, H stay real when setting the decomposition?
-end
+intro comment to ratkrylov
+input validation
