@@ -22,7 +22,10 @@ Moebius transformation with poles p.
 p != 0 is replaced by (p, mu) := (p,   1) and (rho, eta) := (1, 0),
 p  = 0 is replaced by (p, mu) := (1, Inf) and (rho, eta) := (0, 1).
 =#
-function poles_to_moebius!(p::Vector{Complex{R}})::Tuple{Vector{R}, Vector{R}, Vector{R}} where {R<:Real}
+function poles_to_moebius(p::Vector{Complex{R}})::
+	Tuple{Vector{Complex{R}}, Vector{R}, Vector{R}, Vector{R}} where {R<:Real}
+	
+	p = copy(p)
 	mu = ones(R, length(p))
 	rho = ones(R, length(p))
 	eta = zeros(R, length(p))
@@ -34,7 +37,7 @@ function poles_to_moebius!(p::Vector{Complex{R}})::Tuple{Vector{R}, Vector{R}, V
 	rho[sel] = 0
 	eta[sel] = 1
 
-	return mu, rho, eta
+	return p, mu, rho, eta
 end
 
 function ratkrylov(A::Mat, b::Vector{N}, p::Vector{Complex{R}}) where {
@@ -52,7 +55,7 @@ function ratkrylov(A::Mat, b::Vector{N}, p::Vector{Complex{R}}) where {
 		error("can't use real arithmetic")
 	end
 
-	mu, rho, eta = poles_to_moebius!(p)
+	p, mu, rho, eta = poles_to_moebius(p)
 
 	# run_krylov:
 	bd = false
