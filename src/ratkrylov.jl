@@ -152,3 +152,18 @@ function ratkrylov(A::Mat, b::Vector{N}, p::Vector{Complex{R}}) where {
 	end
 	return V, K, H
 end
+
+function ratkrylovf(f::Func, A::Mat, b::Vector{N}, p::Vector{Complex{R}}) where {
+	Func, R<:Union{Float32, Float64}, N<:Union{R, Complex{R}}, Mat<:Union{Matrix{N}, SparseMatrixCSC{N}}}
+
+	V, K, H = ratkrylov(A, b, p)
+	m = length(p)
+	Vm = V[:,1:m]
+	Am = Matrix{N}(0, 0)
+	if p[m] == Inf
+		Am = K[1:m,:] \ H[1:m,:]
+	else
+		Am = Vm'*(A*Vm)
+	end
+	return Vm*(schurparlett(f, Am)*(Vm'*b))
+end

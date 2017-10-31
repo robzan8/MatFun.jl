@@ -4,7 +4,7 @@ module MatFun
 
 using Base.LinAlg, TaylorSeries
 
-export schurparlett, ratkrylov
+export schurparlett, ratkrylov, ratkrylovf
 
 include("schurparlett.jl")
 include("ratkrylov.jl")
