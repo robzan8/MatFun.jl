@@ -160,12 +160,11 @@ function ratkrylovf(f::Func, A::Mat, b::Vector{N}, p::Vector{Complex{R}}) where 
 	V, K, H = ratkrylov(A, b, p)
 
 	m = size(V, 2) - 1 # may be < length(p) in case of breakdown
-	Am = Matrix{N}(0, 0)
+	Am = zeros(N, m+1, m+1)
 	if isinf(p[m])
-		lastcol = V'*(A*V[:,end])
-		lastrow = zeros(N, 1, m)
-		lastrow[1, m] = V[:,end]'*(A*V[:,m])
-		Am = [vcat(K[1:m,:]\H[1:m,:], lastrow) lastcol]
+		Am[1:m, 1:m] = K[1:m,:] \ H[1:m,:]
+		Am[:, end] = V'*(A*V[:,end])
+		Am[end, m] = V[:,end]'*(A*V[:,m])
 	else
 		Am = V'*A*V
 		Am[[i > j+1 for i = 1:m+1, j = 1:m+1]] = 0 # Hessenberg
