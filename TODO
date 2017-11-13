@@ -8,6 +8,8 @@ document schurparlett(T, Q)
 Taylor termination
 
 krylov:
-sparse linear solver
 intro comment to ratkrylov
 input validation
+views in ratkrylov?
+test ratkrylovf
+automatic poles selection

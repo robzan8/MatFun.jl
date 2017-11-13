@@ -146,6 +146,7 @@ function ratkrylov(A::Mat, b::Vector{N}, p::Vector{Complex{R}}) where {
 	end # while j <= m
 
 	if bd == true
+		println("lucky breakdown")
 		V = V[:, 1:j]
 		K = K[1:j, 1:j-1]
 		H = H[1:j, 1:j-1]
@@ -157,13 +158,26 @@ function ratkrylovf(f::Func, A::Mat, b::Vector{N}, p::Vector{Complex{R}}) where 
 	Func, R<:Union{Float32, Float64}, N<:Union{R, Complex{R}}, Mat<:Union{Matrix{N}, SparseMatrixCSC{N}}}
 
 	V, K, H = ratkrylov(A, b, p)
-	m = length(p)
-	Vm = V[:,1:m]
+
+	m = size(V, 2) - 1 # may be < length(p) in case of breakdown
 	Am = Matrix{N}(0, 0)
-	if p[m] == Inf
-		Am = K[1:m,:] \ H[1:m,:]
+	if isinf(p[m])
+		lastcol = V'*(A*V[:,end])
+		lastrow = zeros(N, 1, m)
+		lastrow[1, m] = V[:,end]'*(A*V[:,m])
+		Am = [vcat(K[1:m,:]\H[1:m,:], lastrow) lastcol]
 	else
-		Am = Vm'*(A*Vm)
+		Am = V'*A*V
+		Am[[i > j+1 for i = 1:m+1, j = 1:m+1]] = 0 # Hessenberg
 	end
-	return Vm*(schurparlett(f, Am)*(Vm'*b))
+	
+	return V*(schurparlett(f, Am)*(V'*b))
 end
+
+#= automatic poles selection:
+function ratkrylovf(f::Func, A::Mat, b::Vector{N}, m::int64) where {
+	Func, N<:Union{Float32, Float64, Complex64, Complex128}, Mat<:Union{Matrix{N}, SparseMatrixCSC{N}}}
+
+	return ratkrylovf(f, A, b, p)
+end
+=#
