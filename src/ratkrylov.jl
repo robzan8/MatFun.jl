@@ -167,7 +167,6 @@ function ratkrylovf(f::Func, A::Mat, b::Vector{N}, p::Vector{Complex{R}}) where 
 		Am[end, m] = V[:,end]'*(A*V[:,m])
 	else
 		Am = V'*A*V
-		Am[[i > j+1 for i = 1:m+1, j = 1:m+1]] = 0 # Hessenberg
 	end
 	
 	return V*(schurparlett(f, Am)*(V'*b))
