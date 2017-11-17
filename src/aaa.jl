@@ -17,6 +17,7 @@ function aaa(func::Func, Z::Vector{N}, tol::Float64=1e-13, mmax::Int64=100) wher
 	J = collect(1:M)            # indices of the non-support points
 	z = Vector{N}(0)            # support points
 	f = Vector{N}(0)            # corresponding data values
+	w = Vector{N}(0)            # weights
 	C = Matrix{N}(M, 0)         # Cauchy matrix
 	errvec = real(Vector{N}(0))
 	R = fill(mean(F), M)
@@ -30,7 +31,7 @@ function aaa(func::Func, Z::Vector{N}, tol::Float64=1e-13, mmax::Int64=100) wher
 		C = [C 1./(Z .- Z[j])]
 
 		# Compute weights:
-		A = F.*C - C.*transpose(f)
+		A = F.*C - C.*f.'
 		V = svd(A, thin=true)[3]
 		w = V[:, end]
 
@@ -46,4 +47,43 @@ function aaa(func::Func, Z::Vector{N}, tol::Float64=1e-13, mmax::Int64=100) wher
 			break
 		end
 	end
+
+	# Remove support points with zero weight:
+	keep = w .!= 0
+	z = z[keep]
+	f = f[keep]
+	w = w[keep]
+
+	# Compute poles, residues and zeros:
+
+	# Remove Froissart doublets:
+
+	return
+end
+
+#=
+Evaluate rational function in barycentric form.
+=#
+function reval(z::Vector{N}, f::Vector{N}, w::Vector{N}, x::N)::N where {
+	N<:Union{Float32, Float64, Complex64, Complex128}}
+
+	return reval(fill(x, 1))[1]
+end
+function reval(z::Vector{N}, f::Vector{N}, w::Vector{N}, x::A)::A where {
+	N<:Union{Float32, Float64, Complex64, Complex128}, A<:Array{N}}
+	v = x[:]
+	C = 1./(v .- z.')     # Cauchy matrix
+	r = (C*(w.*f))./(C*w) # result
+
+	# Deal with input Inf as limit:
+	r[isinf.(v)] = sum(w.*f)/sum(w)
+
+	# Force interpolation at support points, to avoid Inf/Inf:
+	for j = 1:length(v)
+		i = findfirst(v[j] .== z)
+		if i != 0
+			r[j] = f[i]
+		end
+	end
+	return reshape(r, size(x))
 end
