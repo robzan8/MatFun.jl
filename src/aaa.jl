@@ -54,11 +54,20 @@ function aaa(func::Func, Z::Vector{N}, tol::Float64=1e-13, mmax::Int64=100) wher
 	f = f[keep]
 	w = w[keep]
 
-	# Compute poles, residues and zeros:
+	# Compute poles and zeros via generalized eigenvalues:
+	m = length(w)
+	B = eye(N, m+1)
+	B[1,1] = 0
+	pol = eigvals([0 w.'; ones(N, m, 1) diagm(z)], B)
+	zer = eigvals([0 (w.*f).'; ones(N, m, 1) diagm(z)], B)
+	pol = pol[!isinf.(pol)]
+	zer = zer[!isinf.(zer)]
 
-	# Remove Froissart doublets:
+	# We don't compute residues, nor remove Froissart doublets. Sorry.
+	# A fake residue vector is returned, for future API stability.
+	res = fill(N(NaN), length(pol))
 
-	return
+	return (x) -> reval(z, f, w, x), pol, res, zer, z, f, w, errvec
 end
 
 #=

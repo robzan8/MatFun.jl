@@ -18,6 +18,5 @@ K\H does not work with complex ratkrylov?
 
 aaa:
 profile/optimize
-what happens when f(x) is NaN/Inf?
-distribution of samples? 2D Chebyshev? polynomial interpolation in equispaced points is a bad idea (the Runge phenomenon).
 K\H does not work with complex ratkrylov?
+residues issuie with real arithmetic?
