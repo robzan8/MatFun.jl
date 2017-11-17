@@ -160,15 +160,14 @@ function ratkrylovf(f::Func, A::Mat, b::Vector{N}, p::Vector{Complex{R}}) where 
 	V, K, H = ratkrylov(A, b, p)
 
 	m = size(V, 2) - 1 # may be < length(p) in case of breakdown
-	Am = zeros(N, m+1, m+1)
+	Am = Matrix{N}(0, 0)
 	if isinf(p[m])
-		Am[1:m, 1:m] = K[1:m,:] \ H[1:m,:]
-		Am[:, end] = V'*(A*V[:,end])
-		Am[end, m] = V[:,end]'*(A*V[:,m])
+		Am = H/K
+		Am[:,end] = V'*(A*V[:,end])
 	else
 		Am = V'*A*V
 	end
-	
+
 	return V*(schurparlett(f, Am)*(V'*b))
 end
 

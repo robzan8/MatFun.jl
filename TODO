@@ -13,3 +13,9 @@ input validation
 views in ratkrylov? profile
 test ratkrylovf
 automatic poles selection - aaa
+K\H does not work with complex ratkrylov?
+
+aaa:
+what happens when f(x) is NaN/Inf?
+distribution of samples? 2D Chebyshev? polynomial interpolation in equispaced points is a bad idea (the Runge phenomenon).
+K\H does not work with complex ratkrylov?
