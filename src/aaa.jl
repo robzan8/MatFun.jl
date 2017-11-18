@@ -62,13 +62,12 @@ function aaa(func::Func, Z::Vector{N}, tol::Float64=1e-13, mmax::Int64=100) wher
 	B[1,1] = 0
 	pol = eigvals([0 w.'; ones(N, m, 1) diagm(z)], B)
 	zer = eigvals([0 (w.*f).'; ones(N, m, 1) diagm(z)], B)
-	pol = pol[!isinf.(pol)]
-	zer = zer[!isinf.(zer)]
+	pol = pol[.!isinf.(pol)]
+	zer = zer[.!isinf.(zer)]
 
 	# Compute residues via discretized Cauchy integral:
 	dz = (1e-5)*exp.(2im*pi*collect(1:4)/4)
 	res = r(pol .+ dz.')*(dz/4)
-	# May want to convert res back to real, if N is real
 
 	# We don't remove numerical Froissart doublets,
 	# which are rare anyway if aaa is used correctly. Sorry.
@@ -80,7 +79,7 @@ end
 Evaluate rational function in barycentric form.
 =#
 function reval(z::Vector{N}, f::Vector{N}, w::Vector{N}, x::X) where {N<:Number, X<:Number}
-	return reval([x])[1]
+	return reval(z, f, w, [x])[1]
 end
 function reval(z::Vector{N}, f::Vector{N}, w::Vector{N}, x::A) where {N<:Number, A<:Array}
 	v = x[:]

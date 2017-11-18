@@ -1,10 +1,7 @@
 using MatFun, Base.Test
 
-@testset "canonical_cplx" begin
-	@test MatFun.canonical_cplx([1.0+0im, 2.0, 3.0]) == true
-	@test MatFun.canonical_cplx([1.0+7im, 1.0-7im, 3.0]) == true
-	@test MatFun.canonical_cplx([1.0+6im, 1.0+3im, 3.0]) == false
-	@test MatFun.canonical_cplx([1.0+0im, 2.0, 3.0+3im]) == false
+@testset "aaa" begin
+	
 end
 
 @testset "poles_to_moebius" begin
