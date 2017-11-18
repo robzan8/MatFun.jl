@@ -54,6 +54,9 @@ function aaa(func::Func, Z::Vector{N}, tol::Float64=1e-13, mmax::Int64=100) wher
 	f = f[keep]
 	w = w[keep]
 
+	# Construct function handle:
+	r = (x) -> reval(z, f, w, x)
+
 	# Compute poles and zeros via generalized eigenvalues:
 	m = length(w)
 	B = eye(N, m+1)
@@ -63,23 +66,24 @@ function aaa(func::Func, Z::Vector{N}, tol::Float64=1e-13, mmax::Int64=100) wher
 	pol = pol[!isinf.(pol)]
 	zer = zer[!isinf.(zer)]
 
-	# We don't compute residues, nor remove Froissart doublets. Sorry.
-	# A fake residue vector is returned, for future API stability.
-	res = fill(N(NaN), length(pol))
+	# Compute residues via discretized Cauchy integral:
+	dz = (1e-5)*exp.(2im*pi*collect(1:4)/4)
+	res = r(pol .+ dz.')*(dz/4)
+	# May want to convert res back to real, if N is real
 
-	return (x) -> reval(z, f, w, x), pol, res, zer, z, f, w, errvec
+	# We don't remove numerical Froissart doublets,
+	# which are rare anyway if aaa is used correctly. Sorry.
+
+	return r, pol, res, zer, z, f, w, errvec
 end
 
 #=
 Evaluate rational function in barycentric form.
 =#
-function reval(z::Vector{N}, f::Vector{N}, w::Vector{N}, x::N)::N where {
-	N<:Union{Float32, Float64, Complex64, Complex128}}
-
-	return reval(fill(x, 1))[1]
+function reval(z::Vector{N}, f::Vector{N}, w::Vector{N}, x::X) where {N<:Number, X<:Number}
+	return reval([x])[1]
 end
-function reval(z::Vector{N}, f::Vector{N}, w::Vector{N}, x::A)::A where {
-	N<:Union{Float32, Float64, Complex64, Complex128}, A<:Array{N}}
+function reval(z::Vector{N}, f::Vector{N}, w::Vector{N}, x::A) where {N<:Number, A<:Array}
 	v = x[:]
 	C = 1./(v .- z.')     # Cauchy matrix
 	r = (C*(w.*f))./(C*w) # result
