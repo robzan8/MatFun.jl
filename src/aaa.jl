@@ -32,12 +32,11 @@ function aaa(func::Func, Z::Vector{N}, tol::Float64=1e-13, mmax::Int64=100) wher
 
 		# Compute weights:
 		A = F.*C - C.*f.'
-		V = svd(A, thin=true)[3]
-		w = V[:, end]
+		V = svd(A[J,:], thin=true)[3]
+		w = V[:,m]
 
 		# Rational approximant on Z:
-		num = C*(w.*f)
-		den = C*w
+		num, den = C*(w.*f), C*w
 		R = copy(F)
 		R[J] = num[J]./den[J]
 

@@ -14,9 +14,9 @@ input validation
 views in ratkrylov? profile
 test ratkrylovf
 automatic poles selection - aaa
-K\H does not work with complex ratkrylov?
+K\H does not work with complex ratkrylov? ---- test fails!!!!!!!!!!!!!!
 
 aaa:
 profile/optimize
 K\H does not work with complex ratkrylov?
-residues issuie with real arithmetic?
+residues issue with real arithmetic?
