@@ -1,58 +1,21 @@
 using MatFun, Base.Test
 
 @testset "aaa" begin
-	
-end
+	Z = collect(linspace(-3.1, 3.1, 200))
+	r, pol, res, zer, z, f, w, errvec = aaa(gamma, Z)
+	@test r(Z) ≈ gamma.(Z)
+	@test any(pol .≈ -1) && any(pol .≈ -2) && any(pol .≈ -3)
+	@test norm(gamma.(zer), Inf) <= 0.1
 
-@testset "poles_to_moebius" begin
-	p, mu, rho, eta = MatFun.poles_to_moebius([1.0+0im, 0, Inf*im, 0, 47+79im])
-	@test p == [1, 1, Inf*im, 1, 47+79im]
-	@test mu == [1, Inf, 1, Inf, 1]
-	@test rho == [1, 0, 1, 0, 1]
-	@test eta == [0, 1, 0, 1, 0]
-end
-
-@testset "ratkrylov" begin
 	srand(789)
-	n = 10
-	m = 5
-	for sparse = [false, true]
-		A = randn(n, n)
-		if sparse
-			A = SparseMatrixCSC(A)
-		end
-		b = randn(n)
-		p = randn(m) + im*randn(m)
-		@test_throws ErrorException ratkrylov(A, b, p) # poles not canonically ordered
-		p = [1.0+0im, Inf, 3+4im, 3-4im, 5]
-		V, K, H = ratkrylov(A, b, p)
-		@test A*V*K ≈ V*H
-		p = [1.0+0im, 2, 3+4im, 3-4im, Inf]
-		V, K, H = ratkrylov(A, b, p)
-		@test A*V[:,1:m]*K[1:m,:] ≈ V*H
-		Am = H/K
-		Am[:,end] = V'*(A*V[:,end])
-		@test V'*A*V ≈ Am
-		p = fill(Inf+0im, m)
-		V, K, H = ratkrylov(A, b, p)
-		@test A*V[:,1:m]*K[1:m,:] ≈ V*H && K[1:m,:] == eye(m)
-
-		A = randn(n, n) + im*randn(n, n)
-		if sparse
-			A = SparseMatrixCSC(A)
-		end
-		b = randn(n) + im*randn(n)
-		p = randn(m) + im*randn(m)
-		V, K, H = ratkrylov(A, b, p)
-		@test A*V*K ≈ V*H
-		p[m] = Inf
-		V, K, H = ratkrylov(A, b, p)
-		@test A*V[:,1:m]*K[1:m,:] ≈ V*H
-		Am = H/K
-		Am[:,end] = V'*(A*V[:,end])
-		@test V'*A*V ≈ Am #it's failing!!!!!!!!!!!!!!!!!!!!
-		p = fill(Inf+0im, m)
-		V, K, H = ratkrylov(A, b, p)
-		@test A*V[:,1:m]*K[1:m,:] ≈ V*H && K[1:m,:] == eye(m)
-	end
+	poles = randn(10) + im*randn(10)
+	residues = randn(10) + im*randn(10)
+	func = (x) -> sum(residues./(x .- poles))
+	Z = MatFun.lpdisk(sqrt(2.0), 400)
+	F = func.(Z)
+	r, pol, res, zer, z, f, w, errvec = aaa(F, Z)
+	@test r(Z) ≈ F
+	@test sort(real(pol)) ≈ sort(real(poles)) && sort(imag(pol)) ≈ sort(imag(poles))
+	@test sort(real(res)) ≈ sort(real(residues)) && sort(imag(res)) ≈ sort(imag(residues))
+	@test norm(func.(zer), Inf) <= 0.1
 end

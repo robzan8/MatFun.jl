@@ -62,8 +62,8 @@ function aaa(func::Func, Z::Vector{N}, tol::Float64=1e-13, mmax::Int64=100) wher
 	B[1,1] = 0
 	pol = eigvals([0 w.'; ones(N, m, 1) diagm(z)], B)
 	zer = eigvals([0 (w.*f).'; ones(N, m, 1) diagm(z)], B)
-	pol = pol[.!isinf.(pol)]
-	zer = zer[.!isinf.(zer)]
+	pol = pol[isfinite.(pol)] # also removes NaN!
+	zer = zer[isfinite.(zer)]
 
 	# Compute residues via discretized Cauchy integral:
 	dz = (1e-5)*exp.(2im*pi*collect(1:4)/4)
@@ -97,4 +97,25 @@ function reval(z::Vector{N}, f::Vector{N}, w::Vector{N}, x::A) where {N<:Number,
 		end
 	end
 	return reshape(r, size(x))
+end
+
+function lppoints(k::Int64)::Vector{Complex128}
+	N = 1 << k
+	p = collect(0:N-1)/(N+0im)
+	for i = 0:N-1
+		for j = 0:k-1
+			p[i+1] += im*(count_ones(i >> j) & 1)/(2 << j)
+		end
+	end
+	return p
+end
+
+function lpdisk(r::Float64, n::Int64)::Vector{Complex128}
+	@assert n >= 8
+	k = Int64(ceil(log2(n*4/pi)))
+	p = lppoints(k)
+	N = 1 << k
+	scale = sqrt(N*r*r*pi/n)
+	p = (p .- (0.5+0.5im))*scale
+	return p[abs2.(p) .<= r*r]
 end
