@@ -85,7 +85,7 @@ function ratkrylov(A::Mat, b::Vector{N}, p::Vector{Complex{R}}) where {
 				for reo = 0:1
 					for reo_i = 1:j
 						v = V[:, reo_i]
-						hh = V[:, j+1]'*v
+						hh = v'*V[:, j+1]
 						V[:, j+1] -= v*hh
 						H[reo_i, j] += hh
 					end
@@ -123,7 +123,7 @@ function ratkrylov(A::Mat, b::Vector{N}, p::Vector{Complex{R}}) where {
 			for reo = 0:1
 				for reo_i = 1:j
 					v = V[:, reo_i]
-					hh = w'*v
+					hh = v'*w
 					w -= v*hh
 					H[reo_i, j] += hh
 				end

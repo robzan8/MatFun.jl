@@ -29,6 +29,7 @@ end
 		@test_throws ErrorException ratkrylov(A, b, p) # poles not canonically ordered
 		p = [1.0+0im, Inf, 3+4im, 3-4im, 5]
 		V, K, H = ratkrylov(A, b, p)
+		@test V'*V ≈ eye(m+1)
 		@test A*V*K ≈ V*H
 		p = [1.0+0im, 2, 3+4im, 3-4im, Inf]
 		V, K, H = ratkrylov(A, b, p)
@@ -47,13 +48,14 @@ end
 		b = randn(n) + im*randn(n)
 		p = randn(m) + im*randn(m)
 		V, K, H = ratkrylov(A, b, p)
+		@test V'*V ≈ eye(m+1)
 		@test A*V*K ≈ V*H
 		p[m] = Inf
 		V, K, H = ratkrylov(A, b, p)
 		@test A*V[:,1:m]*K[1:m,:] ≈ V*H
 		Am = H/K
 		Am[:,end] = V'*(A*V[:,end])
-		@test V'*A*V ≈ Am #it's failing!!!!!!!!!!!!!!!!!!!!
+		@test V'*A*V ≈ Am
 		p = fill(Inf+0im, m)
 		V, K, H = ratkrylov(A, b, p)
 		@test A*V[:,1:m]*K[1:m,:] ≈ V*H && K[1:m,:] == eye(m)
