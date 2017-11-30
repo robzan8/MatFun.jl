@@ -13,7 +13,6 @@ tweak aaa's number of samples
 aaa:
 profile/optimize
 comment
-reval competitive with schurparlett? - tests !!!!!!!!!!!!!!!!!!!!!!!!
 
 
 test if everything works with Float32 matrices
