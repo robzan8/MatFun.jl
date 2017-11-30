@@ -67,7 +67,7 @@ function aaa(func::Func, Z::Vector{N}, tol::Float64=1e-13, mmax::Int64=100) wher
 
 	# Compute residues via discretized Cauchy integral:
 	dz = (1e-5)*exp.(2im*pi*collect(1:4)/4)
-	res = r(pol .+ dz.')*(dz/4)
+	res = reshape(r((pol .+ dz.')[:]), length(pol), length(dz))*(dz/4)
 
 	# We don't remove numerical Froissart doublets,
 	# which are rare anyway if aaa is used correctly. Sorry.
@@ -101,7 +101,7 @@ end
 #=
 Evaluate rational matrix function in barycentric form.
 =#
-function revalm(z::Vector{N}, f::Vector{N}, w::Vector{N}, A::Matrix{X}) where {N<:Number, X<:Number}
+function reval(z::Vector{N}, f::Vector{N}, w::Vector{N}, A::Matrix{X}) where {N<:Number, X<:Number}
 	Num = zeros(A)
 	Den = zeros(A)
 	for j = 1:length(z)
