@@ -19,5 +19,3 @@ using MatFun, Base.Test
 	@test sort(real(res)) ≈ sort(real(residues)) && sort(imag(res)) ≈ sort(imag(residues))
 	@test norm(func.(zer), Inf) <= 0.1
 end
-
-# testset matrix reval

@@ -73,7 +73,7 @@ function aaa(func::Func, Z::Vector{N}, tol::Float64=1e-13, mmax::Int64=100) wher
 
 	# Compute residues via discretized Cauchy integral:
 	dz = (1e-5)*exp.(2im*pi*collect(1:4)/4)
-	res = reshape(r((pol .+ dz.')[:]), length(pol), length(dz))*(dz/4)
+	res = r(pol .+ dz.')*(dz/4)
 
 	# We don't remove numerical Froissart doublets,
 	# which are rare anyway if aaa is used correctly. Sorry.
@@ -84,9 +84,6 @@ end
 #=
 Evaluate rational function in barycentric form.
 =#
-function reval(z::Vector{N}, f::Vector{N}, w::Vector{N}, x::X) where {N<:Number, X<:Number}
-	return reval(z, f, w, [x])[1]
-end
 function reval(z::Vector{N}, f::Vector{N}, w::Vector{N}, x::Vector{X}) where {N<:Number, X<:Number}
 	C = 1./(x .- z.')     # Cauchy matrix
 	r = (C*(w.*f))./(C*w) # result
@@ -103,17 +100,25 @@ function reval(z::Vector{N}, f::Vector{N}, w::Vector{N}, x::Vector{X}) where {N<
 	end
 	return r
 end
+function reval(z::Vector{N}, f::Vector{N}, w::Vector{N}, x::X) where {N<:Number, X<:Number}
+	return reval(z, f, w, [x])[1]
+end
+function reval(z::Vector{N}, f::Vector{N}, w::Vector{N}, A::Array{X}) where {N<:Number, X<:Number}
+	return reshape(reval(z, f, w, A[:]), size(A))
+end
 
 #=
 Evaluate rational matrix function in barycentric form.
+For experiments only, use schurparlett instead.
+Does not work when A has some support point as eigenvalue.
 =#
-function reval(z::Vector{N}, f::Vector{N}, w::Vector{N}, A::Matrix{X}) where {N<:Number, X<:Number}
+function revalm(z::Vector{N}, f::Vector{N}, w::Vector{N}, A::Matrix{X}) where {N<:Number, X<:Number}
 	Num = zeros(A)
 	Den = zeros(A)
 	for j = 1:length(z)
-		B = (w[j]*eye(A)) / (A - z[j]*eye(A))
-		Num += B*f[j]
-		Den += B
+		W = (w[j]*eye(A)) / (A - z[j]*eye(A))
+		Num += W*f[j]
+		Den += W
 	end
 	return Num/Den
 end
@@ -129,12 +134,12 @@ function lppoints(k::Int64)::Vector{Complex128}
 	return p
 end
 
-function lpdisk(r::R, n::Int64)::Vector{Complex{R}} where {R<:Real}
+function lpdisk(rad::R, n::Int64)::Vector{Complex{R}} where {R<:Real}
 	@assert n >= 8
 	k = Int64(ceil(log2(n*4/pi)))
 	p = lppoints(k)
 	N = 1 << k
-	scale = sqrt(N*r*r*pi/n)
+	scale = sqrt(N*rad*rad*pi/n)
 	p = (p .- (0.5+0.5im))*scale
-	return p[abs2.(p) .<= r*r]
+	return p[abs2.(p) .<= rad*rad]
 end
