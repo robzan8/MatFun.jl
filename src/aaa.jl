@@ -62,7 +62,13 @@ function aaa(func::Func, Z::Vector{N}, tol::Float64=1e-13, mmax::Int64=100) wher
 	B[1,1] = 0
 	pol = eigvals([0 w.'; ones(N, m, 1) diagm(z)], B)
 	zer = eigvals([0 (w.*f).'; ones(N, m, 1) diagm(z)], B)
-	pol = pol[isfinite.(pol)] # also removes NaN!
+	#=
+	Note: the original paper and chebfun's implementation only remove Inf poles here.
+	The fact is, eigvals is done with (m+1)*(m+1) matrices, we have m support points,
+	our rational approximation has degree m-1, so we expect at most m-1 poles.
+	NaNs can (and have) come up and must be removed, too.
+	=#
+	pol = pol[isfinite.(pol)]
 	zer = zer[isfinite.(zer)]
 
 	# Compute residues via discretized Cauchy integral:
