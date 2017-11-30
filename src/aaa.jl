@@ -81,22 +81,35 @@ Evaluate rational function in barycentric form.
 function reval(z::Vector{N}, f::Vector{N}, w::Vector{N}, x::X) where {N<:Number, X<:Number}
 	return reval(z, f, w, [x])[1]
 end
-function reval(z::Vector{N}, f::Vector{N}, w::Vector{N}, x::A) where {N<:Number, A<:Array}
-	v = x[:]
-	C = 1./(v .- z.')     # Cauchy matrix
+function reval(z::Vector{N}, f::Vector{N}, w::Vector{N}, x::Vector{X}) where {N<:Number, X<:Number}
+	C = 1./(x .- z.')     # Cauchy matrix
 	r = (C*(w.*f))./(C*w) # result
 
 	# Deal with input Inf as limit:
-	r[isinf.(v)] = sum(w.*f)/sum(w)
+	r[isinf.(x)] = sum(w.*f)/sum(w)
 
 	# Force interpolation at support points, to avoid Inf/Inf:
-	for j = 1:length(v)
-		i = findfirst(v[j] .== z)
+	for j = 1:length(x)
+		i = findfirst(x[j] .== z)
 		if i != 0
 			r[j] = f[i]
 		end
 	end
-	return reshape(r, size(x))
+	return r
+end
+
+#=
+Evaluate rational matrix function in barycentric form.
+=#
+function revalm(z::Vector{N}, f::Vector{N}, w::Vector{N}, A::Matrix{X}) where {N<:Number, X<:Number}
+	Num = zeros(A)
+	Den = zeros(A)
+	for j = 1:length(z)
+		B = (w[j]*eye(A)) / (A - z[j]*eye(A))
+		Num += B*f[j]
+		Den += B
+	end
+	return Num/Den
 end
 
 function lppoints(k::Int64)::Vector{Complex128}
@@ -110,7 +123,7 @@ function lppoints(k::Int64)::Vector{Complex128}
 	return p
 end
 
-function lpdisk(r::Float64, n::Int64)::Vector{Complex128}
+function lpdisk(r::R, n::Int64)::Vector{Complex{R}} where {R<:Real}
 	@assert n >= 8
 	k = Int64(ceil(log2(n*4/pi)))
 	p = lppoints(k)

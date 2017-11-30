@@ -160,21 +160,39 @@ function ratkrylovf(f::Func, A::Mat, b::Vector{N}, p::Vector{Complex{R}}) where 
 	V, K, H = ratkrylov(A, b, p)
 
 	m = size(V, 2) - 1 # may be < length(p) in case of breakdown
-	Am = Matrix{N}(0, 0)
-	if isinf(p[m])
-		Am = H/K
-		Am[:,end] = V'*(A*V[:,end])
-	else
-		Am = V'*A*V
-	end
+	Am = isinf(p[m]) ? [H/K[1:m,1:m] V'*(A*V[:,end])] : V'*A*V
 
 	return V*(schurparlett(f, Am)*(V'*b))
 end
 
-#= automatic poles selection:
-function ratkrylovf(f::Func, A::Mat, b::Vector{N}, m::int64) where {
+#=
+automatic poles selection:
+=#
+function ratkrylovf(f::Func, A::Mat, b::Vector{N}, mmax::Int64=100) where {
 	Func, N<:Union{Float32, Float64, Complex64, Complex128}, Mat<:Union{Matrix{N}, SparseMatrixCSC{N}}}
 
-	return ratkrylovf(f, A, b, p)
+	rad = Mat<:SparseMatrixCSC ? min(norm(A, 1), norm(A, Inf)) : norm(A, 2)
+	rad = max(rad, real(N)(sqrt(eps())))
+
+	nsamples = Mat<:SparseMatrixCSC ? nnz(A) : prod(size(A)) # TODO: profile and tweak
+	nsamples = max(nsamples, 100)
+
+	pol, res, zer, z = aaa(f, lpdisk(rad, nsamples), 1e-13, mmax)[2:5]
+	if N <: Real
+		# Assume f(conj(x)) == conj(f(x)),
+		# real ratkrylov wants conjugated and canonically ordered poles.
+		pos = pol[imag.(pol) .> 0]
+		pol = pol[isreal.(pol)]
+		for i = 1:length(pos)
+			pol = [pol; pos[i]; conj(pos[i])]
+		end
+	end
+	#=
+	The poles returned by aaa should be lenght(z)-1, if we get less
+	it's because some Inf poles have been filtered away. Add them back:
+	(adding at least one allows for faster projection of A in the Krylov space)
+	=#
+	pol = [pol; fill(N(Inf), max(1, length(z)-1 - length(pol)))]
+
+	return ratkrylovf(f, A, b, pol)
 end
-=#

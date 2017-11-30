@@ -1,19 +1,20 @@
 schurparlett:
-profiling
-input validation
 calculate flops of the 3 parlett recurrence versions (complex and non)
 blocchi jordan benchmark
-f(x) = x^40
+f(x) = x^40 - Taylor termination
 document schurparlett(T, Q)
-Taylor termination
 
 krylov:
-profile/optimize
-intro comment to ratkrylov
-input validation
-views in ratkrylov? profile
-test ratkrylovf
-automatic poles selection - aaa
+profile/optimize (use views?)
+comment
+test ratkrylovf                              !!!!!!!!!!!!!!!!!!!!!!!!!
+tweak aaa's number of samples
 
 aaa:
 profile/optimize
+comment
+reval competitive with schurparlett? - tests !!!!!!!!!!!!!!!!!!!!!!!!
+NaN poles? cleanup?                           !!!!!!!!!!!!!!!!!!!!!!
+
+
+test if everything works with Float32 matrices

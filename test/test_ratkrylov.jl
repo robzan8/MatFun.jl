@@ -34,9 +34,7 @@ end
 		p = [1.0+0im, 2, 3+4im, 3-4im, Inf]
 		V, K, H = ratkrylov(A, b, p)
 		@test A*V[:,1:m]*K[1:m,:] ≈ V*H
-		Am = H/K
-		Am[:,end] = V'*(A*V[:,end])
-		@test V'*A*V ≈ Am
+		@test V'*A*V ≈ [H/K[1:m,1:m] V'*(A*V[:,end])]
 		p = fill(Inf+0im, m)
 		V, K, H = ratkrylov(A, b, p)
 		@test A*V[:,1:m]*K[1:m,:] ≈ V*H && K[1:m,:] == eye(m)
@@ -53,9 +51,7 @@ end
 		p[m] = Inf
 		V, K, H = ratkrylov(A, b, p)
 		@test A*V[:,1:m]*K[1:m,:] ≈ V*H
-		Am = H/K
-		Am[:,end] = V'*(A*V[:,end])
-		@test V'*A*V ≈ Am
+		@test V'*A*V ≈ [H/K[1:m,1:m] V'*(A*V[:,end])]
 		p = fill(Inf+0im, m)
 		V, K, H = ratkrylov(A, b, p)
 		@test A*V[:,1:m]*K[1:m,:] ≈ V*H && K[1:m,:] == eye(m)
