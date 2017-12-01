@@ -63,13 +63,13 @@ function aaa(func::Func, Z::Vector{N}, tol::Float64=1e-13, mmax::Int64=100) wher
 	pol = eigvals([0 w.'; ones(N, m, 1) diagm(z)], B)
 	zer = eigvals([0 (w.*f).'; ones(N, m, 1) diagm(z)], B)
 	#=
-	Note: the original paper and chebfun's implementation only remove Inf poles here.
-	The fact is, eigvals is done with (m+1)*(m+1) matrices, we have m support points,
-	our rational approximation has degree m-1, so we expect at most m-1 poles.
-	NaNs can (and have) come up and must be removed, too.
+	Note: some Inf poles can come up as NaN,
+	since in Julia (1.+2im)/(0.+0im) is NaN+NaN*im
+	(https://github.com/JuliaLang/julia/issues/9790).
 	=#
 	pol = pol[isfinite.(pol)]
 	zer = zer[isfinite.(zer)]
+	@assert length(pol) == m-1 && length(zer) == m-1
 
 	# Compute residues via discretized Cauchy integral:
 	dz = (1e-5)*exp.(2im*pi*collect(1:4)/4)
