@@ -57,3 +57,26 @@ end
 		@test A*V[:,1:m]*K[1:m,:] ≈ V*H && K[1:m,:] == eye(m)
 	end
 end
+
+@testset "ratkrylovf" begin
+	n = 40
+	mmax = 30
+	srand(1234)
+	for complex = [false, true], sparse = [false, true]
+		A = randn(n, n)
+		if complex
+			A += im*randn(n, n)
+		end
+		if sparse
+			A = SparseMatrixCSC(A)
+		end
+		b = randn(n)
+		if complex
+			b += im*randn(n)
+		end
+
+		for (f, F) = [(exp, expm), (sin, (X) -> schurparlett(sin, X))]
+			@test ratkrylovf(f, A, b, mmax) ≈ F(Matrix(A))*b
+		end
+	end
+end

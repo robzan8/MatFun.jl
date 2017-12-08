@@ -69,7 +69,6 @@ function aaa(func::Func, Z::Vector{N}, tol::Float64=1e-13, mmax::Int64=100) wher
 	=#
 	pol = pol[isfinite.(pol)]
 	zer = zer[isfinite.(zer)]
-	@assert length(pol) == m-1 && length(zer) == m-1
 
 	# Compute residues via discretized Cauchy integral:
 	dz = (1e-5)*exp.(2im*pi*collect(1:4)/4)

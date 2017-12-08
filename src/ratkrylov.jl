@@ -50,9 +50,8 @@ function ratkrylov(A::Mat, b::Vector{N}, p::Vector{Complex{R}}) where {
 	H = zeros(K)
 	realopt = N <: Real
 
-	# Cannot use real arithmetic if the poles are not ordered canonically.
 	if realopt && !canonical_cplx(p)
-		error("can't use real arithmetic")
+		error("Cannot use real arithmetic if the poles are not ordered canonically.")
 	end
 
 	p, mu, rho, eta = poles_to_moebius(p)
@@ -168,7 +167,7 @@ end
 #=
 automatic poles selection:
 =#
-function ratkrylovf(f::Func, A::Mat, b::Vector{N}, mmax::Int64=100) where {
+function ratkrylovf(f::Func, A::Mat, b::Vector{N}, mmax::Int64=100, tol::Float64=1e-13) where {
 	Func, N<:Union{Float32, Float64, Complex64, Complex128}, Mat<:Union{Matrix{N}, SparseMatrixCSC{N}}}
 
 	rad = Mat<:SparseMatrixCSC ? min(norm(A, 1), norm(A, Inf)) : norm(A, 2)
@@ -177,22 +176,19 @@ function ratkrylovf(f::Func, A::Mat, b::Vector{N}, mmax::Int64=100) where {
 	nsamples = Mat<:SparseMatrixCSC ? nnz(A) : prod(size(A)) # TODO: profile and tweak
 	nsamples = max(nsamples, 100)
 
-	pol, res, zer, z = aaa(f, lpdisk(rad, nsamples), 1e-13, mmax)[2:5]
+	pol = aaa(f, lpdisk(rad, nsamples), tol, mmax)[2]
 	if N <: Real
 		# Assume f(conj(x)) == conj(f(x)),
 		# real ratkrylov wants conjugated and canonically ordered poles.
-		pos = pol[imag.(pol) .> 0]
-		pol = pol[isreal.(pol)]
+		pos = pol[imag.(pol) .> 1e-13]
+		pol = pol[abs.(imag.(pol)) .<= 1e-13]
+		pol[1:end] = real.(pol)
 		for i = 1:length(pos)
 			pol = [pol; pos[i]; conj(pos[i])]
 		end
 	end
-	#=
-	The poles returned by aaa should be lenght(z)-1, if we get less
-	it's because some Inf poles have been filtered away. Add them back:
-	(adding at least one allows for faster projection of A in the Krylov space)
-	=#
-	pol = [pol; fill(N(Inf), max(1, length(z)-1 - length(pol)))]
+	# Inf as last pole allows for faster projection of A in the Krylov space:
+	pol = [pol; N(Inf)]
 
 	return ratkrylovf(f, A, b, pol)
 end

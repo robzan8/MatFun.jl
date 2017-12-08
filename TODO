@@ -7,7 +7,6 @@ document schurparlett(T, Q)
 krylov:
 profile/optimize (use views?)
 comment
-test ratkrylovf                              !!!!!!!!!!!!!!!!!!!!!!!!!
 tweak aaa's number of samples
 
 aaa:
@@ -16,4 +15,5 @@ comment
 
 
 test if everything works with Float32 matrices
-write README/documentation
+write README/documentation/comments
+input validation
