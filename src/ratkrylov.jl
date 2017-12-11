@@ -1,7 +1,7 @@
 #=
 canonical_cplx checks if the poles p are ordered canonically.
 =#
-function canonical_cplx(p::Vector{C})::Bool where {C<:Complex}
+function canonical_cplx(p::Vector{Complex128})
 	m = length(p)
 	j = 1
 	while j <= m
@@ -22,13 +22,11 @@ Moebius transformation with poles p.
 p != 0 is replaced by (p, mu) := (p,   1) and (rho, eta) := (1, 0),
 p  = 0 is replaced by (p, mu) := (1, Inf) and (rho, eta) := (0, 1).
 =#
-function poles_to_moebius(p::Vector{Complex{R}})::
-	Tuple{Vector{Complex{R}}, Vector{R}, Vector{R}, Vector{R}} where {R<:Real}
-	
+function poles_to_moebius(p::Vector{Complex128})
 	p = copy(p)
-	mu = ones(R, length(p))
-	rho = ones(R, length(p))
-	eta = zeros(R, length(p))
+	mu = ones(length(p))
+	rho = ones(length(p))
+	eta = zeros(length(p))
 
 	sel = p .== 0
 
@@ -40,11 +38,27 @@ function poles_to_moebius(p::Vector{Complex{R}})::
 	return p, mu, rho, eta
 end
 
-function ratkrylov(A::Mat, b::Vector{N}, p::Vector{Complex{R}}) where {
-	R<:Union{Float32, Float64}, N<:Union{R, Complex{R}}, Mat<:Union{Matrix{N}, SparseMatrixCSC{N}}}
+function ratkrylov(A::Mat, b::Vector{N}, p::Vector{Complex128}) where {
+	N<:Union{Float64, Complex128}, Mat<:Union{Matrix{N}, SparseMatrixCSC{N}}}
+
+	if size(A, 1) != size(A, 2)
+		throw(DimensionMismatch("A must be square"))
+	end
+	if size(A, 2) != length(b)
+		throw(DimensionMismatch("can't do A*b"))
+	end
+	m, n = length(p), length(b)
+	if n == 0
+		error("A is empty")
+	end
+	if m == 0
+		error("no poles")
+	end
+	if m > n
+		error("too many poles")
+	end
 
 	B = eye(A)
-	m, n = length(p), length(b)
 	V = zeros(N, n, m+1)
 	K = zeros(N, m+1, m)
 	H = zeros(K)
@@ -65,7 +79,7 @@ function ratkrylov(A::Mat, b::Vector{N}, p::Vector{Complex{R}}) where {
 	while j <= m
 		if realopt && !isreal(p[j])
 			# Computing the continuation combination.
-			u = ones(Complex{R}, 1) # U[1:j, j] in the original code
+			u = ones(Complex128, 1) # U[1:j, j] in the original code
 			if j > 1
 				Q = qr(K[1:j, 1:j-1]/mu[j] - H[1:j, 1:j-1]/p[j], thin=false)[1]
 				u = Q[:, end]
@@ -153,8 +167,8 @@ function ratkrylov(A::Mat, b::Vector{N}, p::Vector{Complex{R}}) where {
 	return V, K, H
 end
 
-function ratkrylovf(f::Func, A::Mat, b::Vector{N}, p::Vector{Complex{R}}) where {
-	Func, R<:Union{Float32, Float64}, N<:Union{R, Complex{R}}, Mat<:Union{Matrix{N}, SparseMatrixCSC{N}}}
+function ratkrylovf(f::Func, A::Mat, b::Vector{N}, p::Vector{Complex128}) where {
+	Func, N<:Union{Float64, Complex128}, Mat<:Union{Matrix{N}, SparseMatrixCSC{N}}}
 
 	V, K, H = ratkrylov(A, b, p)
 
@@ -168,10 +182,10 @@ end
 automatic poles selection:
 =#
 function ratkrylovf(f::Func, A::Mat, b::Vector{N}, mmax::Int64=100, tol::Float64=1e-13) where {
-	Func, N<:Union{Float32, Float64, Complex64, Complex128}, Mat<:Union{Matrix{N}, SparseMatrixCSC{N}}}
+	Func, N<:Union{Float64, Complex128}, Mat<:Union{Matrix{N}, SparseMatrixCSC{N}}}
 
-	rad = Mat<:SparseMatrixCSC ? min(norm(A, 1), norm(A, Inf)) : norm(A, 2)
-	rad = max(rad, real(N)(sqrt(eps())))
+	rad = Mat<:SparseMatrixCSC ? min(norm(A, 1), norm(A, Inf), vecnorm(A)) : norm(A, 2)
+	rad = max(rad, sqrt(eps()))
 
 	nsamples = Mat<:SparseMatrixCSC ? nnz(A) : prod(size(A)) # TODO: profile and tweak
 	nsamples = max(nsamples, 100)
@@ -188,7 +202,7 @@ function ratkrylovf(f::Func, A::Mat, b::Vector{N}, mmax::Int64=100, tol::Float64
 		end
 	end
 	# Inf as last pole allows for faster projection of A in the Krylov space:
-	pol = [pol; N(Inf)]
+	pol = [pol; Inf]
 
 	return ratkrylovf(f, A, b, pol)
 end

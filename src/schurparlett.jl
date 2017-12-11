@@ -91,8 +91,8 @@ using the swapping strategy described in Algorithm 4.2.
 The returned vector, blockend, contains the indices at which each block ends
 (after the reordering).
 =#
-function reorder!(T::Matrix{N}, Q::Matrix{N}, vals::Vector{C}, S::Vector{Int64}, p::Int64)::Vector{Int64} where {
-	N<:Number, C<:Complex}
+function reorder!(T::Matrix{N}, Q::Matrix{N}, vals::Vector{Complex{R}}, S::Vector{Int64}, p::Int64)::Vector{Int64} where {
+	R<:Real, N<:Union{R, Complex{R}}}
 
 	# for each set, calculate its mean position in S:
 	pos = zeros(Float64, p)
@@ -161,7 +161,9 @@ end
 #=
 blockf computes f(T) where T is an "atomic" block.
 =#
-function blockf(f::Func, T::Matrix{N}, vals::Vector{C})::Matrix{N} where {Func, N<:Number, C<:Complex}
+function blockf(f::Func, T::Matrix{N}, vals::Vector{Complex{R}})::Matrix{N} where {
+	Func, R<:Real, N<:Union{R, Complex{R}}}
+
 	n = size(T, 1)
 	if n == 1
 		return f.(T)
@@ -196,7 +198,7 @@ function blockf(f::Func, T::Matrix{N}, vals::Vector{C})::Matrix{N} where {Func, 
 	Doing complex Schur at the block level is more efficient than using complex
 	arithmetic for the whole matrix.
 	=#
-	U, Z, vals = schur(Matrix{C}(T))::Tuple{Matrix{C}, Matrix{C}, Vector{C}}
+	U, Z, vals = schur(Matrix{Complex{R}}(T))::Tuple{Matrix{Complex{R}}, Matrix{Complex{R}}, Vector{Complex{R}}}
 	select = imag(vals) .> 0
 	ordschur!(U, Z, select)
 	ordvec!(vals, select)
@@ -204,7 +206,7 @@ function blockf(f::Func, T::Matrix{N}, vals::Vector{C})::Matrix{N} where {Func, 
 	F = Z*recf(f, U, vals, [n÷2, n])*Z'
 	realF = real(F)
 	if norm(imag(F), Inf) > sqrt(eps())*norm(realF, Inf)
-		error("T is real but f(T) has non-negligible imaginary part.")
+		warn("T is real but f(T) has non-negligible imaginary part.")
 		# note: we need f(T) to be real, because trsyl can't handle
 		# quasi-triangular complex matrices.
 	end
@@ -216,8 +218,8 @@ recf computes f(T) using the Parlett recurrence (T is block-triangular).
 The paper suggests to do the recurrence iteratively (Algorithm 5.1),
 we do it recursively as this version performs better.
 =#
-function recf(f::Func, T::Matrix{N}, vals::Vector{C}, blockend::Vector{Int64})::Matrix{N} where {
-	Func, N<:Number, C<:Complex}
+function recf(f::Func, T::Matrix{N}, vals::Vector{Complex{R}}, blockend::Vector{Int64})::Matrix{N} where {
+	Func, R<:Real, N<:Union{R, Complex{R}}}
 
 	@assert length(blockend) > 0
 	if length(blockend) == 1
@@ -247,17 +249,25 @@ Computes f(A) using the Schur-Parlett algorithm.
 When A is a real matrix, computation will be done mostly in real arithmetic
 and the algorithm will assume f(conj(x)) == conj(f(x)).
 """
-function schurparlett(f::Func, T::Matrix{R}, Q::Matrix{R}, vals::Vector{R})::Matrix{R} where {
-	Func, R<:Union{Float32, Float64}}
-
-	return schurparlett(f, T, Q, Vector{Complex{R}}(vals))
+function schurparlett(f::Func, T::Matrix{Float64}, Q::Matrix{Float64}, vals::Vector{Float64})::Matrix{Float64} where {Func}
+	return schurparlett(f, T, Q, Vector{Complex128}(vals))
 end
-function schurparlett(f::Func, T::Matrix{N}, Q::Matrix{N}, vals::Vector{Complex{R}})::Matrix{N} where {
-	Func, R<:Union{Float32, Float64}, N<:Union{R, Complex{R}}}
+function schurparlett(f::Func, T::Matrix{N}, Q::Matrix{N}, vals::Vector{Complex128})::Matrix{N} where {
+	Func, N<:Union{Float64, Complex128}}
+
+	if size(T, 1) != size(T, 2)
+		throw(DimensionMismatch("T must be square"))
+	end
+	if size(Q) != size(T) || length(vals) != size(T, 1)
+		throw(DimensionMismatch("T, Q, vals dimension mismatch"))
+	end
+	if size(T, 1) == 0
+		error("T is empty")
+	end
 
 	d = diag(T)
 	D = diagm(d)
-	if norm(T-D, Inf) <= 1000*eps()*norm(D, Inf)
+	if norm(T-D, Inf) <= 1000*eps()*norm(D, Inf) # T is diagonal
 		return Q*diagm(f.(d))*Q'
 	end
 
@@ -273,9 +283,7 @@ Computes f(A) using the Schur-Parlett algorithm.
 When A is a real matrix, computation will be done mostly in real arithmetic
 and the algorithm will assume f(conj(x)) == conj(f(x)).
 """
-function schurparlett(f::Func, A::Matrix{N})::Matrix{N} where {
-	Func, N<:Union{Float32, Float64, Complex64, Complex128}}
-
+function schurparlett(f::Func, A::Matrix{N})::Matrix{N} where {Func, N<:Union{Float64, Complex128}}
 	T, Q, vals = schur(A)
 	return schurparlett(f, T, Q, vals)
 end

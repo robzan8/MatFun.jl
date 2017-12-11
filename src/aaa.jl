@@ -2,16 +2,24 @@
 comment
 =#
 function aaa(func::Func, Z::Vector{N}, tol::Float64=1e-13, mmax::Int64=100) where {
-	Func, N<:Union{Float32, Float64, Complex64, Complex128}}
+	Func, N<:Union{Float64, Complex128}}
 
 	F = (Func <: Vector) ? Vector{N}(func) : Vector{N}(func.(Z))
+	if length(F) != length(Z)
+		error("F and Z must have equal length")
+	end
+	if mmax < 2
+		error("mmax too small")
+	end
 
 	# Remove any infinite or NaN function values (avoid SVD failures):
-	keep = isfinite.(F)
+	keep = isfinite.(Z) .& isfinite.(F) 
 	Z = Z[keep]
 	F = F[keep]
 	M = length(Z)
-	@assert M == length(F)
+	if M < 2
+		error("not enough finite function values")
+	end
 
 	abstol = tol*norm(F, Inf)
 	J = collect(1:M)            # indices of the non-support points
@@ -133,7 +141,7 @@ function lppoints(k::Int64)::Vector{Complex128}
 	return p
 end
 
-function lpdisk(rad::R, n::Int64)::Vector{Complex{R}} where {R<:Real}
+function lpdisk(rad::Float64, n::Int64)::Vector{Complex128}
 	@assert n >= 8
 	k = Int64(ceil(log2(n*4/pi)))
 	p = lppoints(k)
