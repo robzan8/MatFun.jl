@@ -97,9 +97,10 @@ function ratkrylov(A::Mat, b::Vector{N}, p::Vector{Complex128}) where {
 			for j = j:j+1
 				for reo = 0:1
 					for reo_i = 1:j
-						v = V[:, reo_i]
-						hh = v'*V[:, j+1]
-						V[:, j+1] -= v*hh
+						vi = view(V, 1:size(V, 1), reo_i)
+						vj = view(V, 1:size(V, 1), j+1)
+						hh = vi'*vj
+						V[:, j+1] = vj - vi*hh
 						H[reo_i, j] += hh
 					end
 				end
@@ -135,7 +136,7 @@ function ratkrylov(A::Mat, b::Vector{N}, p::Vector{Complex128}) where {
 			# Orthogonalization, MGS.
 			for reo = 0:1
 				for reo_i = 1:j
-					v = V[:, reo_i]
+					v = view(V, 1:size(V, 1), reo_i)
 					hh = v'*w
 					w -= v*hh
 					H[reo_i, j] += hh
@@ -187,7 +188,7 @@ function ratkrylovf(f::Func, A::Mat, b::Vector{N}, mmax::Int64=100, tol::Float64
 	rad = Mat<:SparseMatrixCSC ? min(norm(A, 1), norm(A, Inf), vecnorm(A)) : norm(A, 2)
 	rad = max(rad, sqrt(eps()))
 
-	nsamples = Mat<:SparseMatrixCSC ? nnz(A) : prod(size(A)) # TODO: profile and tweak
+	nsamples = Mat<:SparseMatrixCSC ? nnz(A)÷2 : prod(size(A))
 	nsamples = max(nsamples, 100)
 
 	pol = aaa(f, lpdisk(rad, nsamples), tol, mmax)[2]

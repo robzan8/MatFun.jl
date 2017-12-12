@@ -11,7 +11,7 @@ The function returns S and p. S is the pattern, where S[i] = s means that
 vals[i] has been assigned to set s. p is the number of sets identified.
 =#
 delta = 0.1
-function blockpattern(vals::Vector{C}, schurtype::Type)::Tuple{Vector{Int64}, Int64} where {C<:Complex}
+function blockpattern(vals::Vector{Complex128}, schurtype::Type)::Tuple{Vector{Int64}, Int64}
 	unassigned = -1
 	S = fill(unassigned, length(vals))
 	p = 0

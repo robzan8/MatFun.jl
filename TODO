@@ -4,15 +4,5 @@ blocchi jordan benchmark
 f(x) = x^40 - Taylor termination
 document schurparlett(T, Q)
 
-krylov:
-profile/optimize (use views?)
-comment
-tweak aaa's number of samples
-
-aaa:
-profile/optimize
-comment
-
-
 make everything work with Float32 matrices
 write README+documentation+comments
