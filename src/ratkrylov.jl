@@ -185,7 +185,7 @@ automatic poles selection:
 function ratkrylovf(f::Func, A::Mat, b::Vector{N}, mmax::Int64=100, tol::Float64=1e-13) where {
 	Func, N<:Union{Float64, Complex128}, Mat<:Union{Matrix{N}, SparseMatrixCSC{N}}}
 
-	rad = Mat<:SparseMatrixCSC ? min(norm(A, 1), norm(A, Inf), vecnorm(A)) : norm(A, 2)
+	rad = min(norm(A, 1), norm(A, Inf), vecnorm(A))
 	rad = max(rad, sqrt(eps()))
 
 	nsamples = Mat<:SparseMatrixCSC ? nnz(A)÷2 : prod(size(A))
