@@ -1,5 +1,9 @@
 #=
-comment
+"The AAA algorithm for rational approximation"
+(Yuji Nakatsukasa, Olivier Sète, Lloyd N. Trefethen).
+The code is insipired by both the original code in the paper and
+Chebfun's implementation.
+func can be a function or a vector of function values.
 =#
 function aaa(func::Func, Z::Vector{N}, tol::Float64=1e-13, mmax::Int64=100) where {
 	Func, N<:Union{Float64, Complex128}}
@@ -130,6 +134,11 @@ function revalm(z::Vector{N}, f::Vector{N}, w::Vector{N}, A::Matrix{X}) where {N
 	return Num/Den
 end
 
+#=
+lppoints returns 2^k Larcher-Pillichshammer points in the complex square
+between 0+0im and 1+1im.
+They are pseudo-random points with nice properties for sampling 2D space.
+=#
 function lppoints(k::Int64)::Vector{Complex128}
 	N = 1 << k
 	p = collect(0:N-1)/(N+0im)
@@ -141,6 +150,10 @@ function lppoints(k::Int64)::Vector{Complex128}
 	return p
 end
 
+#=
+lpdisk returns ~n Larcher-Pillichshammer points in the disk with radius rad
+centered in the origin.
+=#
 function lpdisk(rad::Float64, n::Int64)::Vector{Complex128}
 	@assert n >= 8
 	k = Int64(ceil(log2(n*4/pi)))
