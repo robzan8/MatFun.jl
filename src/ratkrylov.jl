@@ -1,43 +1,11 @@
 #=
-canonical_cplx checks if the poles p are ordered canonically.
+Rational Krylov algorithm as described in:
+"Rational Krylov approximation of matrix functions: Numerical methods
+and optimal pole selection" (Stefan Güttel)
+The function is ported from the Rational Krylov Toolbox for Matlab version 1.0
+(http://guettel.com/rktoolbox/), with adaptations to make it type-stable.
+Later versions of the toolbox add features that are unnecessary for our purposes.
 =#
-function canonical_cplx(p::Vector{Complex128})
-	m = length(p)
-	j = 1
-	while j <= m
-		if isreal(p[j]) || isinf(p[j])
-			j = j+1
-		else
-			if j == m || p[j+1] != conj(p[j])
-				return false
-			end
-			j = j+2
-		end
-	end
-	return true
-end
-
-#=
-Moebius transformation with poles p.
-p != 0 is replaced by (p, mu) := (p,   1) and (rho, eta) := (1, 0),
-p  = 0 is replaced by (p, mu) := (1, Inf) and (rho, eta) := (0, 1).
-=#
-function poles_to_moebius(p::Vector{Complex128})
-	p = copy(p)
-	mu = ones(length(p))
-	rho = ones(length(p))
-	eta = zeros(length(p))
-
-	sel = p .== 0
-
-	p[sel] = 1
-	mu[sel] = Inf
-	rho[sel] = 0
-	eta[sel] = 1
-
-	return p, mu, rho, eta
-end
-
 function ratkrylov(A::Mat, b::Vector{N}, p::Vector{Complex128}) where {
 	N<:Union{Float64, Complex128}, Mat<:Union{Matrix{N}, SparseMatrixCSC{N}}}
 
@@ -168,6 +136,49 @@ function ratkrylov(A::Mat, b::Vector{N}, p::Vector{Complex128}) where {
 	return V, K, H
 end
 
+#=
+canonical_cplx checks if the poles p are ordered canonically.
+=#
+function canonical_cplx(p::Vector{Complex128})
+	m = length(p)
+	j = 1
+	while j <= m
+		if isreal(p[j]) || isinf(p[j])
+			j = j+1
+		else
+			if j == m || p[j+1] != conj(p[j])
+				return false
+			end
+			j = j+2
+		end
+	end
+	return true
+end
+
+#=
+Moebius transformation with poles p.
+p != 0 is replaced by (p, mu) := (p,   1) and (rho, eta) := (1, 0),
+p  = 0 is replaced by (p, mu) := (1, Inf) and (rho, eta) := (0, 1).
+=#
+function poles_to_moebius(p::Vector{Complex128})
+	p = copy(p)
+	mu = ones(length(p))
+	rho = ones(length(p))
+	eta = zeros(length(p))
+
+	sel = p .== 0
+
+	p[sel] = 1
+	mu[sel] = Inf
+	rho[sel] = 0
+	eta[sel] = 1
+
+	return p, mu, rho, eta
+end
+
+#=
+Computes f(A)*b using the rational Krylov approximation with poles p.
+=#
 function ratkrylovf(f::Func, A::Mat, b::Vector{N}, p::Vector{Complex128}) where {
 	Func, N<:Union{Float64, Complex128}, Mat<:Union{Matrix{N}, SparseMatrixCSC{N}}}
 
@@ -180,7 +191,10 @@ function ratkrylovf(f::Func, A::Mat, b::Vector{N}, p::Vector{Complex128}) where 
 end
 
 #=
-automatic poles selection:
+Computes f(A)*b using rational Krylov.
+The poles of f are found automatically by AAA, with parameters mmax and tol.
+You typically want to set mmax manually, to limit the size of the resulting Krylov space.
+When A is Real, the algorithm will assume f(conj(x)) == conj(f(x)).
 =#
 function ratkrylovf(f::Func, A::Mat, b::Vector{N}, mmax::Int64=100, tol::Float64=1e-13) where {
 	Func, N<:Union{Float64, Complex128}, Mat<:Union{Matrix{N}, SparseMatrixCSC{N}}}
@@ -193,8 +207,7 @@ function ratkrylovf(f::Func, A::Mat, b::Vector{N}, mmax::Int64=100, tol::Float64
 
 	pol = aaa(f, lpdisk(rad, nsamples), tol, mmax)[2]
 	if N <: Real
-		# Assume f(conj(x)) == conj(f(x)),
-		# real ratkrylov wants conjugated and canonically ordered poles.
+		# Real ratkrylov wants conjugated and canonically ordered poles.
 		pos = pol[imag.(pol) .> 1e-13]
 		pol = pol[abs.(imag.(pol)) .<= 1e-13]
 		pol[1:end] = real.(pol)
