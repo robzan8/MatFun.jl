@@ -242,13 +242,19 @@ function recf(f::Func, T::Matrix{N}, vals::Vector{Complex{R}}, blockend::Vector{
 	return [F11 F12/scale; zeros(T21) F22]
 end
 
-"""
-	schurparlett(f, A)
-
+#=
 Computes f(A) using the Schur-Parlett algorithm.
 When A is a real matrix, computation will be done mostly in real arithmetic
 and the algorithm will assume f(conj(x)) == conj(f(x)).
-"""
+=#
+function schurparlett(f::Func, A::Matrix{N})::Matrix{N} where {Func, N<:Union{Float64, Complex128}}
+	T, Q, vals = schur(A)
+	return schurparlett(f, T, Q, vals)
+end
+
+#=
+Analogous to schurparlett(f, A), but A is provided as its Schur decomposition.
+=#
 function schurparlett(f::Func, T::Matrix{Float64}, Q::Matrix{Float64}, vals::Vector{Float64})::Matrix{Float64} where {Func}
 	return schurparlett(f, T, Q, Vector{Complex128}(vals))
 end
@@ -274,16 +280,4 @@ function schurparlett(f::Func, T::Matrix{N}, Q::Matrix{N}, vals::Vector{Complex1
 	S, p = blockpattern(vals, N)
 	blockend = reorder!(T, Q, vals, S, p)
 	return Q*recf(f, T, vals, blockend)*Q'
-end
-
-"""
-	schurparlett(f, A)
-
-Computes f(A) using the Schur-Parlett algorithm.
-When A is a real matrix, computation will be done mostly in real arithmetic
-and the algorithm will assume f(conj(x)) == conj(f(x)).
-"""
-function schurparlett(f::Func, A::Matrix{N})::Matrix{N} where {Func, N<:Union{Float64, Complex128}}
-	T, Q, vals = schur(A)
-	return schurparlett(f, T, Q, vals)
 end
