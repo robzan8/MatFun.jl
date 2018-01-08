@@ -24,8 +24,8 @@ The algorithm is as described in the original paper.
 
 ## Installation
 Do:<br />
-`Pkg.add("TaylorSeries")<br />
-Pkg.clone("https://github.com/robzan8/MatFun.jl.git")`<br />
+`Pkg.add("TaylorSeries")`<br />
+`Pkg.clone("https://github.com/robzan8/MatFun.jl.git")`<br />
 Before using the package, make sure to test it with:<br />
 `Pkg.test("MatFun")`
 
