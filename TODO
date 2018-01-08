@@ -2,3 +2,5 @@ schurparlett:
 calculate flops of the 3 parlett recurrence versions (complex and non)
 blocchi jordan benchmark
 f(x) = x^40 - Taylor termination
+
+info about speed and accuracy of algorithms in README
