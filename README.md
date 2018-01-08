@@ -13,6 +13,20 @@ Rational Krylov can be used to compute f(A)*b for sparse matrices:<br />
 `ratkrylovf(f, A, b, mmax=100, tol=1e-13)`<br />
 The poles for the rational Krylov decomposition are given by the AAA rational approximation of f, with parameters mmax and tol. mmax effectively bounds the size of the Krylov space. If you want to specify the poles manually, do:<br />
 `ratkrylovf(f, A, b, p)`<br />
-The rational Krylov decomposition can be computed with<br />
+The rational Krylov decomposition can be computed with:<br />
 `V, K, H = ratkrylov(A, b, p)`<br />
-Again, when A is real, `f(conj(x)) == conj(f(x))` is assumed.
+Again, when A is real, operations are done in real arithmetic and `f(conj(x)) == conj(f(x))` is assumed.
+
+## AAA Rational Approximation
+The package also includes the AAA algorithm for rational approximation:<br />
+`r, pol, res, zer, z, f, w, errvec = aaa(func, Z, tol=1e-13, mmax=100)`<br />
+The algorithm is as described in the original paper.
+
+## Installation
+Do:<br />
+`Pkg.add("TaylorSeries")
+Pkg.clone("https://github.com/robzan8/MatFun.jl.git")`<br />
+Before using the package, make sure to test it with:<br />
+`Pkg.test("MatFun")`
+
+## Enjoy!
