@@ -76,7 +76,7 @@ end
 		end
 
 		for (f, F) = [(exp, expm), (sin, (X) -> schurparlett(sin, X))]
-			@test ratkrylovf(f, A, b, mmax) ≈ F(Matrix(A))*b
+			@test ratkrylov(f, A, b, mmax) ≈ F(Matrix(A))*b
 		end
 	end
 end

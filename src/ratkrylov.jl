@@ -179,7 +179,7 @@ end
 #=
 Computes f(A)*b using the rational Krylov approximation with poles p.
 =#
-function ratkrylovf(f::Func, A::Mat, b::Vector{N}, p::Vector{Complex128}) where {
+function ratkrylov(f::Func, A::Mat, b::Vector{N}, p::Vector{Complex128}) where {
 	Func, N<:Union{Float64, Complex128}, Mat<:Union{Matrix{N}, SparseMatrixCSC{N}}}
 
 	V, K, H = ratkrylov(A, b, p)
@@ -196,7 +196,7 @@ The poles of f are found automatically by AAA, with parameters mmax and tol.
 You typically want to set mmax manually, to limit the size of the resulting Krylov space.
 When A is Real, the algorithm will assume f(conj(x)) == conj(f(x)).
 =#
-function ratkrylovf(f::Func, A::Mat, b::Vector{N}, mmax::Int64=100, tol::Float64=1e-13) where {
+function ratkrylov(f::Func, A::Mat, b::Vector{N}, mmax::Int64=100, tol::Float64=1e-13) where {
 	Func, N<:Union{Float64, Complex128}, Mat<:Union{Matrix{N}, SparseMatrixCSC{N}}}
 
 	rad = min(norm(A, 1), norm(A, Inf), vecnorm(A))
@@ -218,5 +218,5 @@ function ratkrylovf(f::Func, A::Mat, b::Vector{N}, mmax::Int64=100, tol::Float64
 	# Inf as last pole allows for faster projection of A in the Krylov space:
 	pol = [pol; Inf]
 
-	return ratkrylovf(f, A, b, pol)
+	return ratkrylov(f, A, b, pol)
 end
