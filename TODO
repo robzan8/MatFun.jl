@@ -2,6 +2,3 @@ schurparlett:
 calculate flops of the 3 parlett recurrence versions (complex and non)
 blocchi jordan benchmark
 f(x) = x^40 - Taylor termination
-
-make everything work with Float32 matrices
-write README+documentation+comments
