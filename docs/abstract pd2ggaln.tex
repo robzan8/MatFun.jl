@@ -1,0 +1,59 @@
+\documentclass{paper}
+%
+%%%%%%%%%%%%%%%% Please leave the following lines unchanged
+\usepackage{geometry}
+\geometry{a4paper, total={145mm,257mm},top=10mm}
+\usepackage{imakeidx}
+\usepackage{etoolbox}
+\usepackage[affil-it]{authblk}
+\newcommand{\indexauthors}[1]{%
+        \forcsvlist{\index}{#1}}
+\patchcmd{\thebibliography}{\chapter*}{\section*}{}{}
+%\renewcommand{\bibname}{\normalfont\selectfont\normalsize \textbf{References}}
+%%%%%%%%%%%%%%%
+ 
+%%%%%%%%%%%%%%% Please insert your packages and macros here below
+\usepackage{hyperref}
+%
+%
+%
+%%%%%%%%%%%%%%%
+
+%% Please insert the name of the authors separated by a comma, using ``and'' just
+%%for the last name.
+%% Please underline the name of the speaker
+\begin{document}
+\title{Computation of matrix functions with fully automatic Schur-Parlett and Rational Krylov methods}
+\author{Federico Poloni \textsuperscript{1}
+        and \underline{Roberto Zanotto}\textsuperscript{2}}
+
+\affil{ \footnotesize
+        \textsuperscript{1} Department of Computer Science, University of Pisa.  \texttt{fpoloni@di.unipi.it} \\
+ \textsuperscript{2} Department of Computer Science, University of Pisa.  \texttt{robyzan8@gmail.com}
+\medskip}
+
+%%Please insert surname and name of the authors
+\indexauthors{Poloni!Federico, Zanotto!Roberto}
+\maketitle
+
+We present \href{https://github.com/robzan8/MatFun.jl}{MatFun}, a Julia package for computing dense and sparse matrix functions fully automatically (no user input required, other than the function handle and the matrix themselves). This is achieved by combining specifically chosen algorithms and some peculiar feature of Julia. For dense matrices, the Schur-Parlett algorithm \cite{label:1} has been implemented, leveraging Julia's forward differentiation capabilities. The algorithm has also been improved from a performance standpoint, making the Parlett recurrence cache-oblivious and enabling the whole procedure to work mostly in real arithmetic, for real inputs. For sparse matrices, we implemented a Rational Krylov method \cite{label:2}, alongside the AAA Rational Approximation \cite{label:3}. Given a function's samples, AAA is often able to accurately identify its poles, which can then be used by the Rational Krylov method itself for the approximation of \(f(A)b\). The accuracy and performance of the algorithms are evaluated, in comparison with already existing specialized methods.
+
+\small
+\begin{thebibliography}{10}
+
+\bibitem{label:1} Philip I. Davies and Nicholas J. Higham,
+\textit{A Schur-Parlett Algorithm for Computing Matrix Functions},
+SIAM Journal on Matrix Analysis and Applications, 25 (2003) 464-485.
+
+\bibitem{label:2} Stefan G{\"u}ttel,
+\textit{Rational Krylov approximation of matrix functions: Numerical methods and optimal pole selection},
+GAMM-Mitteilungen, 36 (2013) 8-31.
+
+\bibitem{label:3} Nakatsukasa Yuji, S{\`e}te Olivier and Trefethen Lloyd N.,
+\textit{The AAA algorithm for rational approximation},
+ArXiv e-prints, print 1612.00337 (2016).
+
+\end{thebibliography}
+
+\end{document}
+
