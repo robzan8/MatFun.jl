@@ -1,0 +1,48 @@
+A = randn(2500, 2500) + im*randn(2500, 2500)
+
+julia> @time schurparlett(exp, A);
+ 66.512211 seconds (11.22 M allocations: 1.484 GiB, 0.94% gc time)
+
+julia> @time schurparlett(exp, A);
+ 72.412135 seconds (11.22 M allocations: 1.484 GiB, 0.99% gc time)
+
+julia> @time expm(A);
+ 45.642880 seconds (107 allocations: 4.284 GiB, 3.81% gc time)
+
+julia> @time expm(A);
+ 45.657957 seconds (107 allocations: 4.284 GiB, 4.28% gc time)
+
+julia> @time schurparlett(sqrt, A);
+ 67.855981 seconds (11.25 M allocations: 1.485 GiB, 1.36% gc time)
+
+julia> @time schurparlett(exp, B);
+101.220569 seconds (3.25 M allocations: 7.199 GiB, 4.32% gc time)
+
+julia> @time schurparlett(exp, B);
+101.382962 seconds (3.25 M allocations: 7.199 GiB, 4.37% gc time)
+
+julia> @time expm(B);
+ 35.564030 seconds (99 allocations: 3.912 GiB, 5.15% gc time)
+
+julia> @time schurparlett(sqrt, A);
+ 67.864959 seconds (11.22 M allocations: 1.484 GiB, 1.41% gc time)
+
+julia> @time sqrtm(A);
+ 69.445457 seconds (23.70 k allocations: 670.072 MiB, 0.50% gc time)
+
+julia> @time sqrtm(A);
+ 69.332113 seconds (30 allocations: 668.889 MiB, 0.44% gc time)
+
+julia> @time schurparlett(log, A);
+ 66.762318 seconds (11.22 M allocations: 1.484 GiB, 1.02% gc time)
+
+julia> @time schurparlett(log, A);
+ 66.812253 seconds (11.22 M allocations: 1.484 GiB, 1.06% gc time)
+
+julia> @time logm(A);
+294.113397 seconds (774.27 k allocations: 8.325 GiB, 1.41% gc time)
+
+julia> @time logm(A);
+292.737279 seconds (398 allocations: 8.291 GiB, 1.37% gc time)
+
+julia>
