@@ -1,0 +1,51 @@
+julia> vars = matread("vars2.mat")
+Dict{String,Any} with 5 entries:
+  "expA"  => Complex{Float64}[-19599.3-12707.4im -1062.26-688.728im . 265.429+172.094im 252.615+163.786im; -1786.56-115.
+
+  "sinA"  => Complex{Float64}[-6104.59-8791.14im -422.905+416.573im . -391.682-145.986im -42.0937-96.6395im; -1059.09+5.
+
+  "A"     => Complex{Float64}[10.0316+10.0im 0.0494339+0.0im . 0.0194801+0.0im -0.00278266+0.0im; 0.107876+0.0im 9.9477.
+
+  "sqrtA" => Complex{Float64}[3.47818+1.43763im 0.0060529-0.00246524im . 0.00244854-0.00112271im -0.000324436+0.0001007.
+
+  "logA"  => Complex{Float64}[2.65074+0.783958im 0.00247343-0.00241426im . 0.000975546-0.00112555im -0.000138521+9.2101.
+
+
+julia> expA = vars["expA"];
+
+julia> sinA = vars["sinA"];
+
+julia> A = vars["A"];
+
+julia> sqrtA = vars["sqrtA"];
+
+julia> logA = vars["logA"];
+
+julia> norm(expA-schurparlett(exp, A), Inf)/norm(expA, Inf)
+1.2359906435952265e-13
+
+julia> norm(sinA-schurparlett(sin, A), Inf)/norm(sinA, Inf)
+1.1211259700629587e-13
+
+julia> norm(sqrtA-schurparlett(sqrt, A), Inf)/norm(sqrtA, Inf)
+5.2778257400950207e-14
+
+julia> norm(logA-schurparlett(log, A), Inf)/norm(logA, Inf)
+5.09481070681506e-14
+
+julia> norm(expA-expm(A), Inf)/norm(expA, Inf)
+1.4645948216671496e-14
+
+julia> "funm(A, @sin)"
+"funm(A, @sin)"
+
+julia> 1.1e-13
+1.1e-13
+
+julia> norm(sqrtA-sqrtm(A), Inf)/norm(sqrtA, Inf)
+5.276531027180038e-14
+
+julia> norm(logA-logm(A), Inf)/norm(logA, Inf)
+5.089079651063081e-14
+
+julia>
