@@ -217,6 +217,8 @@ function ratkrylov(f::Func, A::Mat, b::Vector{N}, mmax::Int64=100, tol::Float64=
 	end
 	# Inf as last pole allows for faster projection of A in the Krylov space:
 	pol = [pol; Inf]
+	
+	println(length(pol))
 
 	return ratkrylov(f, A, b, pol)
 end
