@@ -10,8 +10,8 @@ The algorithm has a couple of performance improvements, compared to the one desc
 
 ## Rational Krylov
 Rational Krylov can be used to compute f(A)*b for sparse matrices:<br />
-`ratkrylov(f, A, b, mmax=100, tol=1e-13)`<br />
-The poles for the rational Krylov decomposition are given by the AAA rational approximation of f, with parameters mmax and tol. mmax effectively bounds the size of the Krylov space. If you want to specify the poles manually, do:<br />
+`ratkrylov(f, A, b, mmax=100, tol=1e-13, Z=Vector{Complex128}(0))`<br />
+The poles for the rational Krylov decomposition are given by the AAA rational approximation of f, with parameters mmax, tol and Z. mmax effectively bounds the size of the Krylov space. When the sample set Z is not provided, f will be sampled on the 0-centered disk with radius min(norm(A, 1), norm(A, Inf), vecnorm(A)). If you want to specify the poles manually, do:<br />
 `ratkrylov(f, A, b, p)`<br />
 The rational Krylov decomposition can be computed with:<br />
 `V, K, H = ratkrylov(A, b, p)`<br />

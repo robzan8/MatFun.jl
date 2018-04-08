@@ -192,20 +192,26 @@ end
 
 #=
 Computes f(A)*b using rational Krylov.
-The poles of f are found automatically by AAA, with parameters mmax and tol.
-You typically want to set mmax manually, to limit the size of the resulting Krylov space.
+The poles of f are found automatically by AAA, with parameters mmax, tol and Z.
+You typically want to manually set at least mmax, to limit the size of the resulting Krylov space.
+If the sample set Z is not provided, f will be sampled on the 0-centered disk with radius
+min(norm(A, 1), norm(A, Inf), vecnorm(A)).
 When A is Real, the algorithm will assume f(conj(x)) == conj(f(x)).
 =#
-function ratkrylov(f::Func, A::Mat, b::Vector{N}, mmax::Int64=100, tol::Float64=1e-13) where {
-	Func, N<:Union{Float64, Complex128}, Mat<:Union{Matrix{N}, SparseMatrixCSC{N}}}
+function ratkrylov(f::Func, A::Mat, b::Vector{N},
+	mmax::Int64=100, tol::Float64=1e-13, Z::Vector{M}=Vector{Complex128}(0)) where {
+	Func, M<:Union{Float64, Complex128}, N<:Union{Float64, Complex128},
+	Mat<:Union{Matrix{N}, SparseMatrixCSC{N}}}
 
-	rad = min(norm(A, 1), norm(A, Inf), vecnorm(A))
-	rad = max(rad, sqrt(eps()))
+	if length(Z) == 0
+		rad = min(norm(A, 1), norm(A, Inf), vecnorm(A))
+		rad = max(rad, sqrt(eps()))
+		nsamples = Mat<:SparseMatrixCSC ? nnz(A)÷2 : prod(size(A))
+		nsamples = max(nsamples, 100)
+		Z = lpdisk(rad, nsamples)
+	end
 
-	nsamples = Mat<:SparseMatrixCSC ? nnz(A)÷2 : prod(size(A))
-	nsamples = max(nsamples, 100)
-
-	pol = aaa(f, lpdisk(rad, nsamples), tol, mmax)[2]
+	pol = Vector{Complex128}(aaa(f, Z, tol, mmax)[2])
 	if N <: Real
 		# Real ratkrylov wants conjugated and canonically ordered poles.
 		pos = pol[imag.(pol) .> 1e-13]
