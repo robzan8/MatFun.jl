@@ -1,3 +1,5 @@
+(Make sure to take a look at the paper! https://github.com/robzan8/MatFun.jl/blob/master/docs/thesis.pdf )
+
 ## MatFun
 This package provides methods for computing matrix functions. It currently works with Float64 precision only.
 
