@@ -1,4 +1,4 @@
-(Make sure to take a look at the paper! https://github.com/robzan8/MatFun.jl/blob/master/docs/thesis.pdf )
+(Make sure to take a look at the paper! https://github.com/pinkgopher/MatFun.jl/blob/master/docs/thesis.pdf )
 
 ## MatFun
 This package provides methods for computing matrix functions. It currently works with Float64 precision only.
@@ -27,7 +27,7 @@ The algorithm is as described in the original paper.
 ## Installation
 Do:<br />
 `Pkg.add("TaylorSeries")`<br />
-`Pkg.clone("https://github.com/robzan8/MatFun.jl.git")`<br />
+`Pkg.clone("https://github.com/pinkgopher/MatFun.jl.git")`<br />
 Before using the package, make sure to test it with:<br />
 `Pkg.test("MatFun")`
 
